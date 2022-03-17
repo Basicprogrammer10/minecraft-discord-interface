@@ -80,7 +80,7 @@ impl EventHandler for Handler {
 
     async fn ready(&self, _ctx: Context, ready: Ready) {
         println!(
-            "{}:{} is ready!\n",
+            "[*] Bot `{}:{}` is ready!\n",
             ready.user.name, ready.user.discriminator
         );
     }
@@ -140,8 +140,8 @@ fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     let now = chrono::Utc::now();
     let mut players = String::new();
 
-    for i in PLAYERS.lock().iter() {
-        players.push_str(i);
+    for i in PLAYERS.lock().iter().filter(|x| x.online) {
+        players.push_str(i.to_string().as_str());
         players.push('\n');
     }
 

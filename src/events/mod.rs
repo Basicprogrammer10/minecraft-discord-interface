@@ -28,11 +28,14 @@ pub fn mass_init_regex(events: Vec<Box<dyn Event>>) -> Vec<(Regex, Box<dyn Event
 }
 
 pub fn base_events() -> Vec<Box<dyn Event>> {
-    vec![
+    let mut events: Vec<Box<dyn Event>> = vec![
         Box::new(server_start::ServerStart),
         Box::new(join_game::JoinGame),
         Box::new(leave_game::LeaveGame),
         Box::new(chat_message::ChatMessage),
         Box::new(advancement::Advancement),
-    ]
+    ];
+    events.extend(carpet::events());
+
+    events
 }

@@ -1,5 +1,5 @@
 use super::Event;
-use crate::{DiscordEvent, PLAYERS};
+use crate::{DiscordEvent, Player, PLAYERS};
 use regex::Captures;
 
 pub struct JoinGame;
@@ -13,11 +13,28 @@ impl Event for JoinGame {
         let name = regex.get(1).unwrap().as_str();
 
         // Add player to global playerlist
-        PLAYERS.lock().push(name.to_owned());
+        add_player(name.to_owned());
 
         println!("[🧑] `{}` joined the game", name);
         DiscordEvent::new()
             .text(format!(":green_circle: **{}** joined the game", name))
             .refresh_data()
     }
+}
+
+fn add_player(name: String) {
+    let mut players = PLAYERS.lock();
+
+    // Check if player is in playerlist already
+    if let Some(i) = players.iter_mut().find(|x| x.name == name) {
+        // It player is a bot and currently offline
+        // Set to online
+        if !i.online && i.bot {
+            i.online = true;
+        }
+        return;
+    }
+
+    // Add player normally
+    players.push(Player::new(name.to_owned()));
 }

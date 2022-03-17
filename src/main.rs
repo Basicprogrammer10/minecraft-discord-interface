@@ -15,12 +15,14 @@ use simple_config_parser::Config;
 
 mod discord;
 mod events;
+mod types;
 use discord::DiscordEvent;
 use events::InternalEvent;
+use types::player::Player;
 
 lazy_static! {
     // Online Players
-    pub static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    pub static ref PLAYERS: Mutex<Vec<Player>> = Mutex::new(Vec::new());
 }
 
 macro_rules! cfg_get {
