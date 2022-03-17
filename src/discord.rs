@@ -138,7 +138,7 @@ impl DiscordEvent {
 /// Refresh data message
 fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     let now = chrono::Utc::now();
-    let mut players = String::new();
+    let mut players = String::from("\u{200b}");
 
     for i in PLAYERS.lock().iter().filter(|x| x.online) {
         players.push_str(i.to_string().as_str());
@@ -148,8 +148,8 @@ fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     m.content("").embed(|e| {
         e.color(0x09BC8A)
             .timestamp(now)
-            .title("Players Online")
-            .description(players)
+            .title("Server Online")
+            .field("Players", players, false)
     });
 
     m
