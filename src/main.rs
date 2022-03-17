@@ -9,14 +9,15 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serenity::{
     async_trait,
+    builder::EditMessage,
     model::{
         channel::Message,
         gateway::Ready,
-        id::{ChannelId, MessageId},
-        prelude::*,
+        id::{ChannelId, GuildId, MessageId},
     },
     prelude::*,
 };
+
 use simple_config_parser::Config;
 use tokio;
 
@@ -99,7 +100,7 @@ impl EventHandler for Handler {
                             }
                             DiscordEvents::RefreshData => {
                                 this.data_channel
-                                    .edit_message(&ctx, data_message, |x| x.content(data_refresh()))
+                                    .edit_message(&ctx, data_message, data_refresh)
                                     .await
                                     .unwrap();
                             }
@@ -217,16 +218,18 @@ fn main() {
     loop {}
 }
 
-fn data_refresh() -> String {
-    let mut base = String::from("Players Online:\n");
+fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
+    let mut players = String::new();
 
     {
         for i in PLAYERS.lock().iter() {
-            base.push_str(&format!("  - {}\n", i));
+            players.push_str(&format!("  - {}\n", i));
         }
     }
 
-    base
+    m.embed(|e| e.title("Players Online").description(players));
+
+    m
 }
 
 async fn get_data_message(
