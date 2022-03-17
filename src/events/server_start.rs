@@ -13,6 +13,8 @@ impl Event for ServerStart {
         let time = regex.get(1).unwrap().as_str();
 
         println!("[🌠] Server Started ({})", time);
-        DiscordEvent::new().text(format!(":sparkles: Server started ({})", time))
+        DiscordEvent::new()
+            .text(format!(":sparkles: Server started ({})", time))
+            .refresh_data()
     }
 }

@@ -1,13 +1,20 @@
 use std::env;
+use std::fs;
 use std::io::{BufRead, BufReader};
 use std::process::{self, Stdio};
 use std::sync::Mutex;
 
 use crossbeam_channel::{unbounded, Receiver};
 use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use serenity::{
     async_trait,
-    model::{channel::Message, gateway::Ready, id::ChannelId, prelude::*},
+    model::{
+        channel::Message,
+        gateway::Ready,
+        id::{ChannelId, MessageId},
+        prelude::*,
+    },
     prelude::*,
 };
 use simple_config_parser::Config;
@@ -15,6 +22,8 @@ use tokio;
 
 mod events;
 use events::InternalEvent;
+
+const MESSAGE_ID_PATH: &str = ".message_id.txt";
 
 lazy_static! {
     pub static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -42,16 +51,25 @@ impl DiscordEvent {
 
         DiscordEvent { events, ..self }
     }
+
+    fn refresh_data(self) -> Self {
+        let mut events = self.events;
+        events.push(DiscordEvents::RefreshData);
+
+        DiscordEvent { events, ..self }
+    }
 }
 
 pub enum DiscordEvents {
     Text(String),
     ExitText(String),
+    RefreshData,
 }
 
 struct Handler {
     rx: Receiver<DiscordEvent>,
 
+    data_message: RwLock<Option<MessageId>>,
     data_channel: ChannelId,
     event_channel: ChannelId,
 }
@@ -66,7 +84,22 @@ impl EventHandler for Handler {
         for e in self.rx.iter() {
             for f in e.events {
                 match f {
-                    DiscordEvents::Text(i) => self.event_channel.say(&ctx, i).await.unwrap(),
+                    DiscordEvents::Text(i) => {
+                        self.event_channel.say(&ctx, i).await.unwrap();
+                    }
+                    DiscordEvents::RefreshData => {
+                        let msg_id = *self.data_message.read();
+                        if let Some(i) = msg_id {
+                            self.data_channel
+                                .edit_message(ctx, i, |x| x.content(data_refresh()))
+                                .await
+                                .unwrap();
+                            return;
+                        }
+
+                        let msg = self.data_channel.say(&ctx, data_refresh()).await.unwrap();
+                        *self.data_message.write() = Some(msg.id);
+                    }
                     DiscordEvents::ExitText(i) => {
                         self.event_channel.say(&ctx, i).await.unwrap();
                         process::exit(0);
@@ -107,6 +140,10 @@ fn main() {
     let mc_start_cmd = cfg_get!(cfg, "mc_start_cmd");
     let mc_java_path = cfg_get!(cfg, "mc_java_path");
 
+    let data_message_id = fs::read_to_string(MESSAGE_ID_PATH)
+        .ok()
+        .map_or(None, |x| Some(MessageId::from(x.parse::<u64>().unwrap())));
+
     let events = events::base_events();
     let events = events::mass_init_regex(events);
 
@@ -123,6 +160,7 @@ fn main() {
                 let mut client = Client::builder(bot_token)
                     .event_handler(Handler {
                         rx,
+                        data_message: RwLock::new(data_message_id),
                         data_channel: ChannelId::from(bot_data_channel),
                         event_channel: ChannelId::from(bot_event_channel),
                     })
@@ -168,4 +206,16 @@ fn main() {
     })
     .expect("Error sending event to discord thread");
     loop {}
+}
+
+fn data_refresh() -> String {
+    let mut base = String::from("Players Online:\n");
+
+    {
+        for i in PLAYERS.lock().unwrap().iter() {
+            base.push_str(&format!("  - {}\n", i));
+        }
+    }
+
+    base
 }

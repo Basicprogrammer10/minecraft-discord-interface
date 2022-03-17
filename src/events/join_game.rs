@@ -16,6 +16,8 @@ impl Event for JoinGame {
         PLAYERS.lock().unwrap().push(name.to_owned());
 
         println!("[🧑] `{}` joined the game", name);
-        DiscordEvent::new().text(format!(":green_circle: `{}` joined the game", name))
+        DiscordEvent::new()
+            .text(format!(":green_circle: `{}` joined the game", name))
+            .refresh_data()
     }
 }

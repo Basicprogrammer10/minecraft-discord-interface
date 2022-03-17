@@ -16,6 +16,8 @@ impl Event for LeaveGame {
         PLAYERS.lock().unwrap().retain(|x| *x != name);
 
         println!("[🧑] `{}` left the game", name);
-        DiscordEvent::new().text(format!(":red_circle: `{}` left the game", name))
+        DiscordEvent::new()
+            .text(format!(":red_circle: `{}` left the game", name))
+            .refresh_data()
     }
 }
