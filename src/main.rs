@@ -18,8 +18,6 @@ mod events;
 use discord::DiscordEvent;
 use events::InternalEvent;
 
-const MESSAGE_ID_PATH: &str = ".message_id.txt";
-
 lazy_static! {
     // Online Players
     pub static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -44,6 +42,7 @@ fn main() {
     let bot_token = cfg_get!(cfg, "bot_token");
     let bot_data_channel = cfg_get!(cfg, "bot_data_channel", u64);
     let bot_event_channel = cfg_get!(cfg, "bot_event_channel", u64);
+    let data_message_id_file = cfg_get!(cfg, "data_message_id_file");
 
     let start_dir = cfg_get!(cfg, "mc_dir");
     let mc_start_cmd = cfg_get!(cfg, "mc_start_cmd");
@@ -53,7 +52,7 @@ fn main() {
     env::set_current_dir(start_dir).expect("Error moving to dir");
 
     // Try to get the data message id
-    let data_message_id = fs::read_to_string(MESSAGE_ID_PATH)
+    let data_message_id = fs::read_to_string(&data_message_id_file)
         .ok()
         .map(|x| MessageId::from(x.parse::<u64>().unwrap()));
 
@@ -74,6 +73,7 @@ fn main() {
                 let mut client = Client::builder(bot_token)
                     .event_handler(discord::Handler {
                         rx,
+                        msg_id_file: data_message_id_file,
                         data_message: data_message_id,
                         data_channel: ChannelId::from(bot_data_channel),
                         event_channel: ChannelId::from(bot_event_channel),
@@ -115,6 +115,7 @@ fn main() {
         })
     }
 
+    // Send server stop / crash event
     let status = server.wait().unwrap().code().unwrap();
     tx.send(match status {
         0 => events::server_stop::ServerStop.execute(),

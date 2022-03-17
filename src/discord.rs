@@ -14,7 +14,7 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{MESSAGE_ID_PATH, PLAYERS};
+use crate::PLAYERS;
 
 static INIT_DISCORD: Once = Once::new();
 
@@ -22,6 +22,7 @@ static INIT_DISCORD: Once = Once::new();
 pub struct Handler {
     pub rx: Receiver<DiscordEvent>,
 
+    pub msg_id_file: String,
     pub data_message: Option<MessageId>,
     pub data_channel: ChannelId,
     pub event_channel: ChannelId,
@@ -39,7 +40,8 @@ impl EventHandler for Handler {
             tokio::spawn(async move {
                 // Get / Create the message to modify
                 let data_message =
-                    get_data_message(&ctx, this.data_message, this.data_channel).await;
+                    get_data_message(&ctx, this.msg_id_file, this.data_message, this.data_channel)
+                        .await;
 
                 // Wait for incomming events
                 for e in this.rx.iter() {
@@ -131,6 +133,7 @@ fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
 /// Get / Create data message_id
 async fn get_data_message(
     ctx: &Context,
+    msg_id_file: String,
     data_message: Option<MessageId>,
     data_channel: ChannelId,
 ) -> MessageId {
@@ -148,7 +151,7 @@ async fn get_data_message(
                 .await
                 .unwrap()
                 .id;
-            fs::write(MESSAGE_ID_PATH, i.as_u64().to_string()).unwrap();
+            fs::write(msg_id_file, i.as_u64().to_string()).unwrap();
             i
         }
     }
