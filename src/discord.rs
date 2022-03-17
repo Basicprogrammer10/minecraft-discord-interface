@@ -47,12 +47,24 @@ impl EventHandler for Handler {
                 for e in this.rx.iter() {
                     for f in e.events {
                         match f {
-                            DiscordEvents::Text(i) => {
+                            DiscordEvents::TextEvent(i) => {
                                 this.event_channel.say(&ctx, i).await.unwrap();
                             }
                             DiscordEvents::RefreshData => {
                                 this.data_channel
                                     .edit_message(&ctx, data_message, data_refresh)
+                                    .await
+                                    .unwrap();
+                            }
+                            DiscordEvents::StopData => {
+                                let now = chrono::Utc::now();
+
+                                this.data_channel
+                                    .edit_message(&ctx, data_message, |x| {
+                                        x.content("").embed(|e| {
+                                            e.color(0xFF785A).timestamp(now).title("Server Stoped")
+                                        })
+                                    })
                                     .await
                                     .unwrap();
                             }
@@ -75,8 +87,9 @@ impl EventHandler for Handler {
 }
 
 pub enum DiscordEvents {
-    Text(String),
+    TextEvent(String),
     RefreshData,
+    StopData,
     Exit,
 }
 
@@ -95,7 +108,7 @@ impl DiscordEvent {
         T: AsRef<str>,
     {
         let mut events = self.events;
-        events.push(DiscordEvents::Text(text.as_ref().to_owned()));
+        events.push(DiscordEvents::TextEvent(text.as_ref().to_owned()));
 
         DiscordEvent { events }
     }
@@ -113,10 +126,18 @@ impl DiscordEvent {
 
         DiscordEvent { events }
     }
+
+    pub fn stop_data(self) -> Self {
+        let mut events = self.events;
+        events.push(DiscordEvents::StopData);
+
+        DiscordEvent { events }
+    }
 }
 
 /// Refresh data message
 fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
+    let now = chrono::Utc::now();
     let mut players = String::new();
 
     for i in PLAYERS.lock().iter() {
@@ -124,8 +145,12 @@ fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
         players.push('\n');
     }
 
-    m.content("")
-        .embed(|e| e.title("Players Online").description(players));
+    m.content("").embed(|e| {
+        e.color(0x09BC8A)
+            .timestamp(now)
+            .title("Players Online")
+            .description(players)
+    });
 
     m
 }
@@ -137,17 +162,25 @@ async fn get_data_message(
     data_message: Option<MessageId>,
     data_channel: ChannelId,
 ) -> MessageId {
+    let now = chrono::Utc::now();
+
     match data_message {
         Some(i) => {
             data_channel
-                .edit_message(&ctx, i, |x| x.content("Server Starting..."))
+                .edit_message(&ctx, i, |x| {
+                    x.content("")
+                        .add_embed(|e| e.color(0xFFF05A).timestamp(now).title("Server Starting..."))
+                })
                 .await
                 .unwrap();
             i
         }
         None => {
             let i = data_channel
-                .say(&ctx, "Server Starting...")
+                .send_message(&ctx, |x| {
+                    x.content("")
+                        .add_embed(|e| e.color(0xFFF05A).timestamp(now).title("Server Starting..."))
+                })
                 .await
                 .unwrap()
                 .id;
