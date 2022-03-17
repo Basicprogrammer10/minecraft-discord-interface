@@ -13,7 +13,7 @@ impl Event for JoinGame {
         let name = regex.get(1).unwrap().as_str();
 
         // Add player to global playerlist
-        PLAYERS.lock().unwrap().push(name.to_owned());
+        PLAYERS.lock().push(name.to_owned());
 
         println!("[🧑] `{}` joined the game", name);
         DiscordEvent::new()
