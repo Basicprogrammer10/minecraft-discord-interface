@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::process::{self, Stdio};
 use std::sync::Once;
+use std::thread;
 
 use crossbeam_channel::{unbounded, Receiver};
 use lazy_static::lazy_static;
@@ -17,9 +18,7 @@ use serenity::{
     },
     prelude::*,
 };
-
 use simple_config_parser::Config;
-use tokio;
 
 mod events;
 use events::InternalEvent;
@@ -40,32 +39,35 @@ impl DiscordEvent {
         DiscordEvent { events: Vec::new() }
     }
 
-    fn text(self, text: String) -> Self {
+    fn text<T>(self, text: T) -> Self
+    where
+        T: AsRef<str>,
+    {
         let mut events = self.events;
-        events.push(DiscordEvents::Text(text));
+        events.push(DiscordEvents::Text(text.as_ref().to_owned()));
 
-        DiscordEvent { events, ..self }
+        DiscordEvent { events }
     }
 
-    fn exit_text(self, text: String) -> Self {
+    fn exit(self) -> Self {
         let mut events = self.events;
-        events.push(DiscordEvents::ExitText(text));
+        events.push(DiscordEvents::Exit);
 
-        DiscordEvent { events, ..self }
+        DiscordEvent { events }
     }
 
     fn refresh_data(self) -> Self {
         let mut events = self.events;
         events.push(DiscordEvents::RefreshData);
 
-        DiscordEvent { events, ..self }
+        DiscordEvent { events }
     }
 }
 
 pub enum DiscordEvents {
     Text(String),
-    ExitText(String),
     RefreshData,
+    Exit,
 }
 
 #[derive(Debug, Clone)]
@@ -104,8 +106,7 @@ impl EventHandler for Handler {
                                     .await
                                     .unwrap();
                             }
-                            DiscordEvents::ExitText(i) => {
-                                this.event_channel.say(&ctx, i).await.unwrap();
+                            DiscordEvents::Exit => {
                                 process::exit(0);
                             }
                         };
@@ -136,6 +137,7 @@ macro_rules! cfg_get {
 }
 
 fn main() {
+    // Load config values
     let cfg = Config::new().file("config.cfg").unwrap();
 
     let bot_token = cfg_get!(cfg, "bot_token");
@@ -152,7 +154,7 @@ fn main() {
     // Try to get the data message id
     let data_message_id = fs::read_to_string(MESSAGE_ID_PATH)
         .ok()
-        .map_or(None, |x| Some(MessageId::from(x.parse::<u64>().unwrap())));
+        .map(|x| MessageId::from(x.parse::<u64>().unwrap()));
 
     // Load internal events
     let events = events::base_events();
@@ -162,7 +164,7 @@ fn main() {
     let (tx, rx) = unbounded();
 
     // Start async runtime and discord bot in another thread
-    std::thread::spawn(move || {
+    thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -184,18 +186,21 @@ fn main() {
             });
     });
 
+    // Start server
     let mut server = process::Command::new(mc_java_path)
         .args(mc_start_cmd.split(' ').collect::<Vec<&str>>())
         .stdout(Stdio::piped())
         .spawn()
         .expect("Error starting process");
 
+    // Get stdout
     let raw_stdout = server
         .stdout
         .as_mut()
         .expect("Error getting process stdout");
     let stdout = BufReader::new(raw_stdout).lines();
 
+    // Loop though stdout stream
     for i in stdout.map(|x| x.unwrap()) {
         // Pass through stdout
         println!("[$] {}", i);
@@ -215,19 +220,20 @@ fn main() {
         _ => events::server_crash::ServerCrash(status).execute(),
     })
     .expect("Error sending event to discord thread");
-    loop {}
+
+    // Block thread untill final discord message sends
+    thread::park();
 }
 
 fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     let mut players = String::new();
 
-    {
-        for i in PLAYERS.lock().iter() {
-            players.push_str(&format!("  - {}\n", i));
-        }
+    for i in PLAYERS.lock().iter() {
+        players.push_str(&format!("  - {}\n", i));
     }
 
-    m.embed(|e| e.title("Players Online").description(players));
+    m.content("")
+        .embed(|e| e.title("Players Online").description(players));
 
     m
 }
@@ -240,13 +246,17 @@ async fn get_data_message(
     match data_message {
         Some(i) => {
             data_channel
-                .edit_message(&ctx, i, |x| x.content("Server Starting"))
+                .edit_message(&ctx, i, |x| x.content("Server Starting..."))
                 .await
                 .unwrap();
             i
         }
         None => {
-            let i = data_channel.say(&ctx, "Server Starting").await.unwrap().id;
+            let i = data_channel
+                .say(&ctx, "Server Starting...")
+                .await
+                .unwrap()
+                .id;
             fs::write(MESSAGE_ID_PATH, i.as_u64().to_string()).unwrap();
             i
         }
