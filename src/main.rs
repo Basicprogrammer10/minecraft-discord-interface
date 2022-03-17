@@ -13,13 +13,15 @@ use simple_config_parser::Config;
 use tokio;
 
 mod events;
+use events::InternalEvent;
 
-enum Event {
-    TextEvent(String),
+pub enum DiscordEvent {
+    Text(String),
+    ExitText(String),
 }
 
 struct Handler {
-    rx: Receiver<Event>,
+    rx: Receiver<DiscordEvent>,
 
     data_channel: ChannelId,
     event_channel: ChannelId,
@@ -34,7 +36,11 @@ impl EventHandler for Handler {
         // tokio::spawn(async move { for e in self.rx.iter() {} });
         for e in self.rx.iter() {
             match e {
-                Event::TextEvent(i) => self.event_channel.say(&ctx, i).await.unwrap(),
+                DiscordEvent::Text(i) => self.event_channel.say(&ctx, i).await.unwrap(),
+                DiscordEvent::ExitText(i) => {
+                    self.event_channel.say(&ctx, i).await.unwrap();
+                    process::exit(0);
+                }
             };
         }
     }
@@ -119,11 +125,18 @@ fn main() {
         events.iter().for_each(|e| {
             if let Some(j) = e.0.captures(&i) {
                 if let Some(m) = e.1.execute(&i, j) {
-                    tx.send(Event::TextEvent(m));
+                    tx.send(m).expect("Error sending event to discord thread");
                 }
             }
         })
     }
-}
 
-// 274877926400
+    let status = server.wait().unwrap().code().unwrap();
+    if let Some(m) = match status {
+        0 => events::server_stop::ServerStop.execute(),
+        _ => events::server_crash::ServerCrash(status).execute(),
+    } {
+        tx.send(m).expect("Error sending event to discord thread");
+        loop {}
+    }
+}
