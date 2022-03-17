@@ -2,126 +2,27 @@ use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::process::{self, Stdio};
-use std::sync::Once;
 use std::thread;
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::unbounded;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serenity::{
-    async_trait,
-    builder::EditMessage,
-    model::{
-        channel::Message,
-        gateway::Ready,
-        id::{ChannelId, GuildId, MessageId},
-    },
+    model::id::{ChannelId, MessageId},
     prelude::*,
 };
 use simple_config_parser::Config;
 
+mod discord;
 mod events;
+use discord::DiscordEvent;
 use events::InternalEvent;
 
 const MESSAGE_ID_PATH: &str = ".message_id.txt";
-static INIT_DISCORD: Once = Once::new();
 
 lazy_static! {
+    // Online Players
     pub static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
-}
-
-pub struct DiscordEvent {
-    pub events: Vec<DiscordEvents>,
-}
-
-impl DiscordEvent {
-    fn new() -> Self {
-        DiscordEvent { events: Vec::new() }
-    }
-
-    fn text<T>(self, text: T) -> Self
-    where
-        T: AsRef<str>,
-    {
-        let mut events = self.events;
-        events.push(DiscordEvents::Text(text.as_ref().to_owned()));
-
-        DiscordEvent { events }
-    }
-
-    fn exit(self) -> Self {
-        let mut events = self.events;
-        events.push(DiscordEvents::Exit);
-
-        DiscordEvent { events }
-    }
-
-    fn refresh_data(self) -> Self {
-        let mut events = self.events;
-        events.push(DiscordEvents::RefreshData);
-
-        DiscordEvent { events }
-    }
-}
-
-pub enum DiscordEvents {
-    Text(String),
-    RefreshData,
-    Exit,
-}
-
-#[derive(Debug, Clone)]
-struct Handler {
-    rx: Receiver<DiscordEvent>,
-
-    data_message: Option<MessageId>,
-    data_channel: ChannelId,
-    event_channel: ChannelId,
-}
-
-#[async_trait]
-impl EventHandler for Handler {
-    // On User Send Message
-    async fn message(&self, _ctx: Context, _msg: Message) {}
-
-    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-        INIT_DISCORD.call_once(|| {
-            // Init Discord thing
-            let this = self.clone();
-            tokio::spawn(async move {
-                // Get / Create the message to modify
-                let data_message =
-                    get_data_message(&ctx, this.data_message, this.data_channel).await;
-
-                // Wait for incomming events
-                for e in this.rx.iter() {
-                    for f in e.events {
-                        match f {
-                            DiscordEvents::Text(i) => {
-                                this.event_channel.say(&ctx, i).await.unwrap();
-                            }
-                            DiscordEvents::RefreshData => {
-                                this.data_channel
-                                    .edit_message(&ctx, data_message, data_refresh)
-                                    .await
-                                    .unwrap();
-                            }
-                            DiscordEvents::Exit => {
-                                process::exit(0);
-                            }
-                        };
-                    }
-                }
-            });
-        });
-    }
-
-    async fn ready(&self, _ctx: Context, ready: Ready) {
-        println!(
-            "{}:{} is ready!\n",
-            ready.user.name, ready.user.discriminator
-        );
-    }
 }
 
 macro_rules! cfg_get {
@@ -171,7 +72,7 @@ fn main() {
             .unwrap()
             .block_on(async {
                 let mut client = Client::builder(bot_token)
-                    .event_handler(Handler {
+                    .event_handler(discord::Handler {
                         rx,
                         data_message: data_message_id,
                         data_channel: ChannelId::from(bot_data_channel),
@@ -223,42 +124,4 @@ fn main() {
 
     // Block thread untill final discord message sends
     thread::park();
-}
-
-fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
-    let mut players = String::new();
-
-    for i in PLAYERS.lock().iter() {
-        players.push_str(&format!("  - {}\n", i));
-    }
-
-    m.content("")
-        .embed(|e| e.title("Players Online").description(players));
-
-    m
-}
-
-async fn get_data_message(
-    ctx: &Context,
-    data_message: Option<MessageId>,
-    data_channel: ChannelId,
-) -> MessageId {
-    match data_message {
-        Some(i) => {
-            data_channel
-                .edit_message(&ctx, i, |x| x.content("Server Starting..."))
-                .await
-                .unwrap();
-            i
-        }
-        None => {
-            let i = data_channel
-                .say(&ctx, "Server Starting...")
-                .await
-                .unwrap()
-                .id;
-            fs::write(MESSAGE_ID_PATH, i.as_u64().to_string()).unwrap();
-            i
-        }
-    }
 }
