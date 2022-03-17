@@ -17,7 +17,7 @@ impl Event for LeaveGame {
 
         println!("[🧑] `{}` left the game", name);
         DiscordEvent::new()
-            .text(format!(":red_circle: `{}` left the game", name))
+            .text(format!(":red_circle: **{}** left the game", name))
             .refresh_data()
     }
 }

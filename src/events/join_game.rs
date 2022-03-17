@@ -17,7 +17,7 @@ impl Event for JoinGame {
 
         println!("[🧑] `{}` joined the game", name);
         DiscordEvent::new()
-            .text(format!(":green_circle: `{}` joined the game", name))
+            .text(format!(":green_circle: **{}** joined the game", name))
             .refresh_data()
     }
 }

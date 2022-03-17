@@ -2,6 +2,9 @@ use regex::{Captures, Regex};
 
 use crate::DiscordEvent;
 
+mod advancement;
+mod carpet;
+mod chat_message;
 mod join_game;
 mod leave_game;
 pub mod server_crash;
@@ -29,5 +32,7 @@ pub fn base_events() -> Vec<Box<dyn Event>> {
         Box::new(server_start::ServerStart),
         Box::new(join_game::JoinGame),
         Box::new(leave_game::LeaveGame),
+        Box::new(chat_message::ChatMessage),
+        Box::new(advancement::Advancement),
     ]
 }
