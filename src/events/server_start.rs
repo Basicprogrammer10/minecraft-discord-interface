@@ -9,13 +9,10 @@ impl Event for ServerStart {
         r"\[.*\]: Done \((.*)\)!"
     }
 
-    fn execute(&self, _line: &str, regex: Captures) -> Option<DiscordEvent> {
+    fn execute(&self, _line: &str, regex: Captures) -> DiscordEvent {
         let time = regex.get(1).unwrap().as_str();
 
         println!("[🌠] Server Started ({})", time);
-        Some(DiscordEvent::Text(format!(
-            ":sparkles: Server started ({})",
-            time
-        )))
+        DiscordEvent::new().text(format!(":sparkles: Server started ({})", time))
     }
 }

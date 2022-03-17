@@ -4,8 +4,8 @@ use crate::DiscordEvent;
 pub struct ServerStop;
 
 impl InternalEvent for ServerStop {
-    fn execute(&self) -> Option<DiscordEvent> {
+    fn execute(&self) -> DiscordEvent {
         println!("[❌] Server Stoped");
-        Some(DiscordEvent::ExitText(format!(":x: Server stoped")))
+        DiscordEvent::new().exit_text(format!(":x: Server stoped"))
     }
 }

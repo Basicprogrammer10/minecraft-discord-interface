@@ -1,9 +1,10 @@
 use std::env;
 use std::io::{BufRead, BufReader};
 use std::process::{self, Stdio};
-use std::sync::mpsc;
+use std::sync::Mutex;
 
 use crossbeam_channel::{unbounded, Receiver};
+use lazy_static::lazy_static;
 use serenity::{
     async_trait,
     model::{channel::Message, gateway::Ready, id::ChannelId, prelude::*},
@@ -15,7 +16,35 @@ use tokio;
 mod events;
 use events::InternalEvent;
 
-pub enum DiscordEvent {
+lazy_static! {
+    pub static ref PLAYERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+}
+
+pub struct DiscordEvent {
+    pub events: Vec<DiscordEvents>,
+}
+
+impl DiscordEvent {
+    fn new() -> Self {
+        DiscordEvent { events: Vec::new() }
+    }
+
+    fn text(self, text: String) -> Self {
+        let mut events = self.events;
+        events.push(DiscordEvents::Text(text));
+
+        DiscordEvent { events, ..self }
+    }
+
+    fn exit_text(self, text: String) -> Self {
+        let mut events = self.events;
+        events.push(DiscordEvents::ExitText(text));
+
+        DiscordEvent { events, ..self }
+    }
+}
+
+pub enum DiscordEvents {
     Text(String),
     ExitText(String),
 }
@@ -30,22 +59,24 @@ struct Handler {
 #[async_trait]
 impl EventHandler for Handler {
     // On User Send Message
-    async fn message(&self, ctx: Context, msg: Message) {}
+    async fn message(&self, _ctx: Context, _msg: Message) {}
 
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         // tokio::spawn(async move { for e in self.rx.iter() {} });
         for e in self.rx.iter() {
-            match e {
-                DiscordEvent::Text(i) => self.event_channel.say(&ctx, i).await.unwrap(),
-                DiscordEvent::ExitText(i) => {
-                    self.event_channel.say(&ctx, i).await.unwrap();
-                    process::exit(0);
-                }
-            };
+            for f in e.events {
+                match f {
+                    DiscordEvents::Text(i) => self.event_channel.say(&ctx, i).await.unwrap(),
+                    DiscordEvents::ExitText(i) => {
+                        self.event_channel.say(&ctx, i).await.unwrap();
+                        process::exit(0);
+                    }
+                };
+            }
         }
     }
 
-    async fn ready(&self, _: Context, ready: Ready) {
+    async fn ready(&self, _ctx: Context, ready: Ready) {
         println!(
             "{}:{} is ready!\n",
             ready.user.name, ready.user.discriminator
@@ -124,19 +155,17 @@ fn main() {
         // Trigger Events if regex matches
         events.iter().for_each(|e| {
             if let Some(j) = e.0.captures(&i) {
-                if let Some(m) = e.1.execute(&i, j) {
-                    tx.send(m).expect("Error sending event to discord thread");
-                }
+                tx.send(e.1.execute(&i, j))
+                    .expect("Error sending event to discord thread");
             }
         })
     }
 
     let status = server.wait().unwrap().code().unwrap();
-    if let Some(m) = match status {
+    tx.send(match status {
         0 => events::server_stop::ServerStop.execute(),
         _ => events::server_crash::ServerCrash(status).execute(),
-    } {
-        tx.send(m).expect("Error sending event to discord thread");
-        loop {}
-    }
+    })
+    .expect("Error sending event to discord thread");
+    loop {}
 }

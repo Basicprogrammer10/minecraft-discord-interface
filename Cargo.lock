@@ -506,6 +506,7 @@ name = "minecraft_discord"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "lazy_static",
  "regex",
  "serenity",
  "simple_config_parser",

@@ -9,3 +9,4 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 simple_config_parser = "1.0.0"
 regex = "1.5.5"
 crossbeam-channel = "0.5.3"
+lazy_static = "1.4.0"
