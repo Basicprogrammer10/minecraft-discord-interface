@@ -38,7 +38,7 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content == "~test" {
             msg.reply(ctx, "Ok").await.unwrap();
-            self.tx.send("/stop".to_owned()).unwrap();
+            self.tx.send("/stop\n".to_owned()).unwrap();
         }
     }
 
@@ -88,6 +88,7 @@ impl EventHandler for Handler {
                     };
                 }
 
+                // Go poll other tasks
                 tokio::task::yield_now().await;
             }
         });

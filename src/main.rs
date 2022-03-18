@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{self, Stdio};
 use std::sync::{atomic::AtomicBool, Arc};
 use std::thread;
@@ -101,16 +101,15 @@ fn main() {
         .spawn()
         .expect("Error starting process");
 
-    // Get stdout
+    // Get std(in / out)
     let raw_stdout = server
         .stdout
         .as_mut()
         .expect("Error getting process stdout");
     let stdout = BufReader::new(raw_stdout).lines();
-
-    // Get stdin
     let mut stdin = server.stdin.take();
 
+    // Spawn a new thread to interact with server stdin
     thread::spawn(move || {
         let stdin = stdin.as_mut().expect("Error getting process stdin");
 
