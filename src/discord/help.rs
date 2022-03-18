@@ -17,18 +17,31 @@ impl Command for Help {
     }
 
     fn description(&self) -> &'static str {
-        "Get a list of ll commands or get more deatils on one"
+        "Get a list of ll commands or get specific deatils on one"
     }
 
-    async fn execute(&self, _cmd: Vec<&str>, _ctx: Context, _msg: Message) -> Response {
-        let mut help = String::from("\u{200b}");
+    async fn execute(&self, cmd: Vec<&str>, ctx: Context, msg: Message) -> Response {
+        if cmd.len() == 1 {
+            let mut help = String::from("\u{200b}");
 
-        for i in COMMANDS.iter() {
-            help.push_str(i.help());
-            help.push('\n');
+            for i in COMMANDS.iter() {
+                help.push_str(i.help());
+                help.push('\n');
+            }
+
+            msg.channel_id
+                .send_message(ctx, |x| {
+                    x.embed(|e| {
+                        e.title(format!("Commands [{}]", COMMANDS.len()))
+                            .description(format!("```\n{}```", help))
+                            .color(0x09BC8A)
+                    })
+                })
+                .await
+                .unwrap();
+
+            return Response::new();
         }
-
-        // TODO: this
 
         Response::new()
     }
