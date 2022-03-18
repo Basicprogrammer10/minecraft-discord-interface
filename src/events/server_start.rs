@@ -14,7 +14,7 @@ impl Event for ServerStart {
 
         println!("[🌠] Server Started ({})", time);
         Response::new()
-            .text(format!(":sparkles: Server started ({})", time))
-            .refresh_data()
+            .discord_text(format!(":sparkles: Server started ({})", time))
+            .discord_refresh_data()
     }
 }

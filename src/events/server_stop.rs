@@ -6,6 +6,9 @@ pub struct ServerStop;
 impl InternalEvent for ServerStop {
     fn execute(&self) -> Response {
         println!("[❌] Server Stoped");
-        Response::new().text(":x: Server stoped").stop_data().exit()
+        Response::new()
+            .discord_text(":x: Server stoped")
+            .discord_stop_data()
+            .async_exit()
     }
 }

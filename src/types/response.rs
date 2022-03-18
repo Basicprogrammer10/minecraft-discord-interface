@@ -18,7 +18,7 @@ impl Response {
         }
     }
 
-    pub fn text<T>(self, text: T) -> Self
+    pub fn discord_text<T>(self, text: T) -> Self
     where
         T: AsRef<str>,
     {
@@ -28,21 +28,21 @@ impl Response {
         Self { discord, ..self }
     }
 
-    pub fn exit(self) -> Self {
+    pub fn async_exit(self) -> Self {
         let mut discord = self.discord;
         discord.push(DiscordEvents::Exit);
 
         Self { discord, ..self }
     }
 
-    pub fn refresh_data(self) -> Self {
+    pub fn discord_refresh_data(self) -> Self {
         let mut discord = self.discord;
         discord.push(DiscordEvents::RefreshData);
 
         Self { discord, ..self }
     }
 
-    pub fn stop_data(self) -> Self {
+    pub fn discord_stop_data(self) -> Self {
         let mut discord = self.discord;
         discord.push(DiscordEvents::StopData);
 

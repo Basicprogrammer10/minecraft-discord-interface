@@ -14,6 +14,6 @@ impl Event for ChatMessage {
         let message = regex.get(2).unwrap().as_str();
 
         println!("[🎹] `{}` said `{}`", name, message);
-        Response::new().text(format!(":speech_left: **{}** » {}", name, message))
+        Response::new().discord_text(format!(":speech_left: **{}** » {}", name, message))
     }
 }

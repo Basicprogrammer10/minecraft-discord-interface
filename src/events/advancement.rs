@@ -15,7 +15,7 @@ impl Event for Advancement {
         let advancement = regex.get(4).unwrap().as_str();
 
         println!("[📀] `{}` completed the {} `{}`", name, thing, advancement);
-        Response::new().text(format!(
+        Response::new().discord_text(format!(
             ":dvd: **{}** has completed the {} **{}**",
             name, thing, advancement
         ))
