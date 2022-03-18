@@ -36,11 +36,9 @@ pub struct Handler {
 impl EventHandler for Handler {
     // On User Send Message
     async fn message(&self, ctx: Context, msg: Message) {
-        println!("GOT MSG {}", msg.content);
         if msg.content == "~test" {
-            println!("GIT TEST");
             msg.reply(ctx, "Ok").await.unwrap();
-            self.tx.send("say hello_world".to_owned()).unwrap();
+            self.tx.send("/stop".to_owned()).unwrap();
         }
     }
 
@@ -64,7 +62,7 @@ impl EventHandler for Handler {
                 for f in e.events {
                     match f {
                         DiscordEvents::TextEvent(i) => {
-                            // this.event_channel.say(&ctx, i).await.unwrap();
+                            this.event_channel.say(&ctx, i).await.unwrap();
                         }
                         DiscordEvents::RefreshData => {
                             this.data_channel
@@ -89,6 +87,8 @@ impl EventHandler for Handler {
                         }
                     };
                 }
+
+                tokio::task::yield_now().await;
             }
         });
     }

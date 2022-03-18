@@ -11,6 +11,8 @@ pub mod server_crash;
 mod server_start;
 pub mod server_stop;
 
+type SafeEvent = Box<dyn Event + Send + Sync>;
+
 pub trait Event {
     fn regex(&self) -> &'static str;
     fn execute(&self, line: &str, regex: Captures) -> DiscordEvent;
@@ -20,15 +22,15 @@ pub trait InternalEvent {
     fn execute(&self) -> DiscordEvent;
 }
 
-pub fn mass_init_regex(events: Vec<Box<dyn Event>>) -> Vec<(Regex, Box<dyn Event>)> {
+pub fn mass_init_regex(events: Vec<SafeEvent>) -> Vec<(Regex, SafeEvent)> {
     events
         .into_iter()
         .map(|x| (Regex::new(x.regex()).unwrap(), x))
         .collect()
 }
 
-pub fn base_events() -> Vec<Box<dyn Event>> {
-    let mut events: Vec<Box<dyn Event>> = vec![
+pub fn base_events() -> Vec<SafeEvent> {
+    let mut events: Vec<SafeEvent> = vec![
         Box::new(server_start::ServerStart),
         Box::new(join_game::JoinGame),
         Box::new(leave_game::LeaveGame),

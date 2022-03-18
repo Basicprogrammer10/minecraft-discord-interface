@@ -109,15 +109,17 @@ fn main() {
     let stdout = BufReader::new(raw_stdout).lines();
 
     // Get stdin
-    let raw_stdin = server.stdin.take().expect("Error getting process stdin");
-    let mut stdin = BufWriter::new(raw_stdin);
+    let mut stdin = server.stdin.take();
 
     thread::spawn(move || {
+        let stdin = stdin.as_mut().expect("Error getting process stdin");
+
         for i in server_rx.iter() {
-            println!("Got server message");
+            println!("Got server message: `{}`", i);
             stdin
                 .write_all(i.as_bytes())
                 .expect("Error writing to stdout");
+            stdin.flush().unwrap();
         }
     });
 
