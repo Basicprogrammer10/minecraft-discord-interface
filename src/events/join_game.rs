@@ -36,5 +36,5 @@ fn add_player(name: String) {
     }
 
     // Add player normally
-    players.push(Player::new(name.to_owned()));
+    players.push(Player::new(name));
 }
