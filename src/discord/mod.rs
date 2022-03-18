@@ -21,9 +21,15 @@ use serenity::{
 use crate::{Command, DiscordEvents, PLAYERS};
 
 mod about;
+mod help;
+mod refresh;
 
 lazy_static! {
-    static ref COMMANDS: Vec<Box<dyn Command + Sync>> = vec![Box::new(about::About)];
+    pub static ref COMMANDS: Vec<Box<dyn Command + Sync>> = vec![
+        Box::new(about::About),
+        Box::new(refresh::Refresh),
+        Box::new(help::Help)
+    ];
 }
 
 #[derive(Debug, Clone)]
@@ -31,8 +37,9 @@ pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
     pub command_prefix: String,
 
-    pub rx: Receiver<Vec<DiscordEvents>>,
-    pub tx: Sender<Vec<String>>,
+    pub discord_rx: Receiver<Vec<DiscordEvents>>,
+    pub discord_tx: Sender<Vec<DiscordEvents>>,
+    pub server_tx: Sender<Vec<String>>,
 
     pub msg_id_file: String,
     pub data_message: Option<MessageId>,
@@ -58,11 +65,16 @@ impl EventHandler for Handler {
         if let Some(i) = COMMANDS.iter().find(|x| x.name() == parts[0]) {
             let exe = i.execute(parts, ctx.clone(), msg.clone()).await;
 
-            // TODO: Send discord events too
-            self.tx.send(exe.server).unwrap();
-
+            self.server_tx
+                .send(exe.server)
+                .expect("Error sending event to server");
+            self.discord_tx
+                .send(exe.discord)
+                .expect("Error sending event to discord thread");
             return;
         }
+
+        // TODO: Did you mean XX message
     }
 
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
@@ -81,7 +93,7 @@ impl EventHandler for Handler {
 
         tokio::spawn(async move {
             // Wait for incomming events
-            for e in this.rx.iter() {
+            for e in this.discord_rx.iter() {
                 // For each event in the event array
                 for f in e {
                     match f {

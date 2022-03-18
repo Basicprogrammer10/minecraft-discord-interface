@@ -73,6 +73,7 @@ fn main() {
 
     // Start async runtime and discord bot in another thread
     let server_tx_1 = server_tx.clone();
+    let discord_tx_1 = discord_tx.clone();
     thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -83,8 +84,9 @@ fn main() {
                     .event_handler(discord::Handler {
                         loop_init: Arc::new(AtomicBool::new(false)),
                         command_prefix: bot_command_prefix,
-                        rx: discord_rx,
-                        tx: server_tx_1,
+                        discord_rx,
+                        discord_tx: discord_tx_1,
+                        server_tx: server_tx_1,
                         msg_id_file: data_message_id_file,
                         data_message: data_message_id,
                         data_channel: ChannelId::from(bot_data_channel),
