@@ -44,7 +44,7 @@ impl Command for Help {
                     x.embed(|e| {
                         e.title(format!("Commands [{}]", COMMANDS.len()))
                             .description(format!("```\n{}```", help))
-                            .color(colors::GREEEN)
+                            .color(colors::GREEN)
                     })
                 })
                 .await
@@ -66,7 +66,7 @@ impl Command for Help {
                                 cfg.bot.command_prefix,
                                 cmd.help()
                             ))
-                            .color(colors::GREEEN)
+                            .color(colors::GREEN)
                     })
                 })
                 .await

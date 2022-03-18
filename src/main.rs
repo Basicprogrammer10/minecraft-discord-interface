@@ -26,6 +26,8 @@ use types::{
     response::{DiscordEvents, Response},
 };
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 lazy_static! {
     // Online Players
     pub static ref PLAYERS: Mutex<Vec<Player>> = Mutex::new(Vec::new());

@@ -20,7 +20,7 @@ pub fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     }
 
     m.content("").embed(|e| {
-        e.color(colors::GREEEN)
+        e.color(colors::GREEN)
             .timestamp(now)
             .title("Server Online")
             .field("Players", players, false)
