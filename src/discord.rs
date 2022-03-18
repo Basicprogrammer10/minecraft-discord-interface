@@ -1,8 +1,11 @@
 use std::fs;
 use std::process;
-use std::sync::Once;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
-use crossbeam_channel::Receiver;
+use crossbeam_channel::{Receiver, Sender};
 use serenity::{
     async_trait,
     builder::EditMessage,
@@ -16,11 +19,12 @@ use serenity::{
 
 use crate::PLAYERS;
 
-static INIT_DISCORD: Once = Once::new();
-
 #[derive(Debug, Clone)]
 pub struct Handler {
+    pub loop_init: Arc<AtomicBool>,
+
     pub rx: Receiver<DiscordEvent>,
+    pub tx: Sender<String>,
 
     pub msg_id_file: String,
     pub data_message: Option<MessageId>,
@@ -31,50 +35,61 @@ pub struct Handler {
 #[async_trait]
 impl EventHandler for Handler {
     // On User Send Message
-    async fn message(&self, _ctx: Context, _msg: Message) {}
+    async fn message(&self, ctx: Context, msg: Message) {
+        println!("GOT MSG {}", msg.content);
+        if msg.content == "~test" {
+            println!("GIT TEST");
+            msg.reply(ctx, "Ok").await.unwrap();
+            self.tx.send("say hello_world".to_owned()).unwrap();
+        }
+    }
 
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-        INIT_DISCORD.call_once(|| {
-            // Init Discord thing
-            let this = self.clone();
-            tokio::spawn(async move {
-                // Get / Create the message to modify
-                let data_message =
-                    get_data_message(&ctx, this.msg_id_file, this.data_message, this.data_channel)
-                        .await;
+        if self.loop_init.load(Ordering::Relaxed) {
+            return;
+        }
 
-                // Wait for incomming events
-                for e in this.rx.iter() {
-                    for f in e.events {
-                        match f {
-                            DiscordEvents::TextEvent(i) => {
-                                this.event_channel.say(&ctx, i).await.unwrap();
-                            }
-                            DiscordEvents::RefreshData => {
-                                this.data_channel
-                                    .edit_message(&ctx, data_message, data_refresh)
-                                    .await
-                                    .unwrap();
-                            }
-                            DiscordEvents::StopData => {
-                                let now = chrono::Utc::now();
+        self.loop_init.store(true, Ordering::Relaxed);
 
-                                this.data_channel
-                                    .edit_message(&ctx, data_message, |x| {
-                                        x.content("").embed(|e| {
-                                            e.color(0xFF785A).timestamp(now).title("Server Stoped")
-                                        })
+        // Init Discord thing
+        let this = self.clone();
+
+        // Get / Create the message to modify
+        let data_message =
+            get_data_message(&ctx, this.msg_id_file, this.data_message, this.data_channel).await;
+
+        tokio::spawn(async move {
+            // Wait for incomming events
+            for e in this.rx.iter() {
+                for f in e.events {
+                    match f {
+                        DiscordEvents::TextEvent(i) => {
+                            // this.event_channel.say(&ctx, i).await.unwrap();
+                        }
+                        DiscordEvents::RefreshData => {
+                            this.data_channel
+                                .edit_message(&ctx, data_message, data_refresh)
+                                .await
+                                .unwrap();
+                        }
+                        DiscordEvents::StopData => {
+                            let now = chrono::Utc::now();
+
+                            this.data_channel
+                                .edit_message(&ctx, data_message, |x| {
+                                    x.content("").embed(|e| {
+                                        e.color(0xFF785A).timestamp(now).title("Server Stoped")
                                     })
-                                    .await
-                                    .unwrap();
-                            }
-                            DiscordEvents::Exit => {
-                                process::exit(0);
-                            }
-                        };
-                    }
+                                })
+                                .await
+                                .unwrap();
+                        }
+                        DiscordEvents::Exit => {
+                            process::exit(0);
+                        }
+                    };
                 }
-            });
+            }
         });
     }
 

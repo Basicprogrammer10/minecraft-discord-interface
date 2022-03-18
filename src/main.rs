@@ -1,10 +1,11 @@
 use std::env;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::process::{self, Stdio};
+use std::sync::{atomic::AtomicBool, Arc};
 use std::thread;
 
-use crossbeam_channel::unbounded;
+use crossbeam_channel::{unbounded, Receiver};
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use serenity::{
@@ -62,8 +63,9 @@ fn main() {
     let events = events::base_events();
     let events = events::mass_init_regex(events);
 
-    // Create mpsc channel
-    let (tx, rx) = unbounded();
+    // Create mpsc channels
+    let (discord_tx, discord_rx) = unbounded();
+    let (server_tx, server_rx): (_, Receiver<String>) = unbounded();
 
     // Start async runtime and discord bot in another thread
     thread::spawn(move || {
@@ -74,7 +76,9 @@ fn main() {
             .block_on(async {
                 let mut client = Client::builder(bot_token)
                     .event_handler(discord::Handler {
-                        rx,
+                        loop_init: Arc::new(AtomicBool::new(false)),
+                        rx: discord_rx,
+                        tx: server_tx,
                         msg_id_file: data_message_id_file,
                         data_message: data_message_id,
                         data_channel: ChannelId::from(bot_data_channel),
@@ -93,6 +97,7 @@ fn main() {
     let mut server = process::Command::new(mc_java_path)
         .args(mc_start_cmd.split(' ').collect::<Vec<&str>>())
         .stdout(Stdio::piped())
+        .stdin(Stdio::piped())
         .spawn()
         .expect("Error starting process");
 
@@ -103,6 +108,19 @@ fn main() {
         .expect("Error getting process stdout");
     let stdout = BufReader::new(raw_stdout).lines();
 
+    // Get stdin
+    let raw_stdin = server.stdin.take().expect("Error getting process stdin");
+    let mut stdin = BufWriter::new(raw_stdin);
+
+    thread::spawn(move || {
+        for i in server_rx.iter() {
+            println!("Got server message");
+            stdin
+                .write_all(i.as_bytes())
+                .expect("Error writing to stdout");
+        }
+    });
+
     // Loop though stdout stream
     for i in stdout.map(|x| x.unwrap()) {
         // Pass through stdout
@@ -111,7 +129,8 @@ fn main() {
         // Trigger Events if regex matches
         events.iter().for_each(|e| {
             if let Some(j) = e.0.captures(&i) {
-                tx.send(e.1.execute(&i, j))
+                discord_tx
+                    .send(e.1.execute(&i, j))
                     .expect("Error sending event to discord thread");
             }
         })
@@ -119,11 +138,12 @@ fn main() {
 
     // Send server stop / crash event
     let status = server.wait().unwrap().code().unwrap();
-    tx.send(match status {
-        0 => events::server_stop::ServerStop.execute(),
-        _ => events::server_crash::ServerCrash(status).execute(),
-    })
-    .expect("Error sending event to discord thread");
+    discord_tx
+        .send(match status {
+            0 => events::server_stop::ServerStop.execute(),
+            _ => events::server_crash::ServerCrash(status).execute(),
+        })
+        .expect("Error sending event to discord thread");
 
     // Block thread untill final discord message sends
     thread::park();
