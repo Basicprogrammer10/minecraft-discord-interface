@@ -1,4 +1,3 @@
-use std::fs;
 use std::process;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -8,7 +7,6 @@ use std::sync::{
 use crossbeam_channel::{Receiver, Sender};
 use serenity::{
     async_trait,
-    builder::EditMessage,
     model::{
         channel::Message,
         gateway::Ready,
@@ -17,10 +15,11 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{Config, DiscordEvents, PLAYERS};
+use crate::{Config, DiscordEvents};
 
 mod colors;
 mod commands;
+mod misc;
 
 #[derive(Debug, Clone)]
 pub struct Handler {
@@ -45,8 +44,10 @@ impl EventHandler for Handler {
             return;
         }
 
-        let parts = command_parts(&msg.content, prefix);
+        // Split the command into parts by space
+        let parts = misc::command_parts(&msg.content, prefix);
 
+        // If command is installed and emabled, run it
         if let Some(i) = commands::COMMANDS.iter().find(|x| x.name() == parts[0]) {
             let exe = i.execute(&self.config, ctx.clone(), msg.clone()).await;
 
@@ -59,7 +60,33 @@ impl EventHandler for Handler {
             return;
         }
 
-        // TODO: Did you mean XX message
+        // If command is not found
+        // Try to find one by a simaler name
+        let best = misc::best_command(&parts[0]);
+
+        // Create a discription depending on the max similarity
+        let disc = if best.1 > 0.0 {
+            format!(
+                "Did you mean `{pre}{}`? ({}%)",
+                commands::COMMANDS[best.0].name(),
+                (best.1 * 100.0).round(),
+                pre = prefix
+            )
+        } else {
+            format!("Use `{}help` to see all commands", prefix)
+        };
+
+        // Send message
+        msg.channel_id
+            .send_message(ctx, |x| {
+                x.embed(|e| {
+                    e.title("Error: Unknown Command")
+                        .description(format!("{}\nUse `{}help` for all commands.", disc, prefix,))
+                        .color(colors::RED)
+                })
+            })
+            .await
+            .unwrap();
     }
 
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
@@ -73,7 +100,7 @@ impl EventHandler for Handler {
         let this = self.clone();
 
         // Get / Create the message to modify
-        let data_message = get_data_message(
+        let data_message = misc::get_data_message(
             &ctx,
             this.config.bot.message_id_path,
             this.data_message,
@@ -92,7 +119,7 @@ impl EventHandler for Handler {
                         }
                         DiscordEvents::RefreshData => {
                             this.data_channel
-                                .edit_message(&ctx, data_message, data_refresh)
+                                .edit_message(&ctx, data_message, misc::data_refresh)
                                 .await
                                 .unwrap();
                         }
@@ -126,73 +153,4 @@ impl EventHandler for Handler {
             ready.user.name, ready.user.discriminator
         );
     }
-}
-
-/// Refresh data message
-fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
-    let now = chrono::Utc::now();
-    let mut players = String::from("\u{200b}");
-
-    for i in PLAYERS.lock().iter().filter(|x| x.online) {
-        players.push_str(i.to_string().as_str());
-        players.push('\n');
-    }
-
-    m.content("").embed(|e| {
-        e.color(colors::GREEEN)
-            .timestamp(now)
-            .title("Server Online")
-            .field("Players", players, false)
-    });
-
-    m
-}
-
-/// Get / Create data message_id
-async fn get_data_message(
-    ctx: &Context,
-    msg_id_file: String,
-    data_message: Option<MessageId>,
-    data_channel: ChannelId,
-) -> MessageId {
-    let now = chrono::Utc::now();
-
-    match data_message {
-        Some(i) => {
-            data_channel
-                .edit_message(&ctx, i, |x| {
-                    x.content("").add_embed(|e| {
-                        e.color(colors::YELLOW)
-                            .timestamp(now)
-                            .title("Server Starting...")
-                    })
-                })
-                .await
-                .unwrap();
-            i
-        }
-        None => {
-            let i = data_channel
-                .send_message(&ctx, |x| {
-                    x.content("").add_embed(|e| {
-                        e.color(colors::YELLOW)
-                            .timestamp(now)
-                            .title("Server Starting...")
-                    })
-                })
-                .await
-                .unwrap()
-                .id;
-            fs::write(msg_id_file, i.as_u64().to_string()).unwrap();
-            i
-        }
-    }
-}
-
-fn command_parts(cmd: &str, prefix: &str) -> Vec<String> {
-    cmd.strip_prefix(prefix)
-        .unwrap()
-        .split(' ')
-        .map(|x| x.to_owned())
-        .collect()
 }

@@ -14,6 +14,7 @@ use serenity::{
 };
 use simple_config_parser::Config as Cfg;
 
+mod common;
 mod discord;
 mod events;
 mod types;
