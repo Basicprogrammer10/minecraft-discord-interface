@@ -67,7 +67,7 @@ fn main() {
 
     // Create mpsc channels
     let (discord_tx, discord_rx) = unbounded();
-    let (server_tx, server_rx): (_, Receiver<String>) = unbounded();
+    let (server_tx, server_rx): (_, Receiver<Vec<String>>) = unbounded();
 
     // Start async runtime and discord bot in another thread
     thread::spawn(move || {
@@ -115,12 +115,16 @@ fn main() {
     thread::spawn(move || {
         let stdin = stdin.as_mut().expect("Error getting process stdin");
 
+        // Wait for incomming server events
         for i in server_rx.iter() {
-            println!("Got server message: `{}`", i);
-            stdin
-                .write_all(i.as_bytes())
-                .expect("Error writing to stdout");
-            stdin.flush().unwrap();
+            // Execute commands in the event
+            for j in i {
+                println!("!DBG! Got server message: `{}`", j);
+                stdin
+                    .write_all(j.as_bytes())
+                    .expect("Error writing to stdout");
+                stdin.flush().unwrap();
+            }
         }
     });
 
@@ -132,8 +136,17 @@ fn main() {
         // Trigger Events if regex matches
         events.iter().for_each(|e| {
             if let Some(j) = e.0.captures(&i) {
+                // Run code for event
+                let exe = e.1.execute(&i, j);
+
+                // Send server response
+                server_tx
+                    .send(exe.server)
+                    .expect("Error sending event to server");
+
+                // Send discord respons
                 discord_tx
-                    .send(e.1.execute(&i, j).discord)
+                    .send(exe.discord)
                     .expect("Error sending event to discord thread");
             }
         })

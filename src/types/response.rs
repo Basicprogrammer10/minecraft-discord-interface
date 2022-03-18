@@ -48,4 +48,11 @@ impl Response {
 
         Self { discord, ..self }
     }
+
+    pub fn server_command(self, command: String) -> Self {
+        let mut server = self.server;
+        server.push(command);
+
+        Self { server, ..self }
+    }
 }
