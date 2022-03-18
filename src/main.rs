@@ -19,6 +19,7 @@ mod events;
 mod types;
 use events::InternalEvent;
 use types::{
+    command::Command,
     player::Player,
     response::{DiscordEvents, Response},
 };
@@ -47,6 +48,7 @@ fn main() {
     let bot_token = cfg_get!(cfg, "bot_token");
     let bot_data_channel = cfg_get!(cfg, "bot_data_channel", u64);
     let bot_event_channel = cfg_get!(cfg, "bot_event_channel", u64);
+    let bot_command_prefix = cfg_get!(cfg, "bot_command_prefix");
     let data_message_id_file = cfg_get!(cfg, "data_message_id_file");
 
     let start_dir = cfg_get!(cfg, "mc_dir");
@@ -80,6 +82,7 @@ fn main() {
                 let mut client = Client::builder(bot_token)
                     .event_handler(discord::Handler {
                         loop_init: Arc::new(AtomicBool::new(false)),
+                        command_prefix: bot_command_prefix,
                         rx: discord_rx,
                         tx: server_tx_1,
                         msg_id_file: data_message_id_file,

@@ -6,6 +6,7 @@ use std::sync::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
+use lazy_static::lazy_static;
 use serenity::{
     async_trait,
     builder::EditMessage,
@@ -17,11 +18,18 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{DiscordEvents, PLAYERS};
+use crate::{Command, DiscordEvents, PLAYERS};
+
+mod about;
+
+lazy_static! {
+    static ref COMMANDS: Vec<Box<dyn Command + Sync>> = vec![Box::new(about::About)];
+}
 
 #[derive(Debug, Clone)]
 pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
+    pub command_prefix: String,
 
     pub rx: Receiver<Vec<DiscordEvents>>,
     pub tx: Sender<Vec<String>>,
@@ -36,9 +44,24 @@ pub struct Handler {
 impl EventHandler for Handler {
     // On User Send Message
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "~test" {
-            msg.reply(ctx, "Ok").await.unwrap();
-            self.tx.send(vec!["/stop\n".to_owned()]).unwrap();
+        if !msg.content.starts_with(&self.command_prefix) {
+            return;
+        }
+
+        let parts = msg
+            .content
+            .strip_prefix(&self.command_prefix)
+            .unwrap()
+            .split(' ')
+            .collect::<Vec<&str>>();
+
+        if let Some(i) = COMMANDS.iter().find(|x| x.name() == parts[0]) {
+            let exe = i.execute(parts, ctx.clone(), msg.clone()).await;
+
+            // TODO: Send discord events too
+            self.tx.send(exe.server).unwrap();
+
+            return;
         }
     }
 
