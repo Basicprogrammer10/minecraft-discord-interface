@@ -6,7 +6,6 @@ use std::sync::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
-use lazy_static::lazy_static;
 use serenity::{
     async_trait,
     builder::EditMessage,
@@ -18,19 +17,10 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{Command, Config, DiscordEvents, PLAYERS};
+use crate::{Config, DiscordEvents, PLAYERS};
 
-mod about;
-mod help;
-mod refresh;
-
-lazy_static! {
-    pub static ref COMMANDS: Vec<Box<dyn Command + Sync>> = vec![
-        Box::new(about::About),
-        Box::new(refresh::Refresh),
-        Box::new(help::Help)
-    ];
-}
+mod colors;
+mod commands;
 
 #[derive(Debug, Clone)]
 pub struct Handler {
@@ -57,7 +47,7 @@ impl EventHandler for Handler {
 
         let parts = command_parts(&msg.content, prefix);
 
-        if let Some(i) = COMMANDS.iter().find(|x| x.name() == parts[0]) {
+        if let Some(i) = commands::COMMANDS.iter().find(|x| x.name() == parts[0]) {
             let exe = i.execute(&self.config, ctx.clone(), msg.clone()).await;
 
             self.server_tx
@@ -112,7 +102,7 @@ impl EventHandler for Handler {
                             this.data_channel
                                 .edit_message(&ctx, data_message, |x| {
                                     x.content("").embed(|e| {
-                                        e.color(0xFF785A).timestamp(now).title("Server Stoped")
+                                        e.color(colors::RED).timestamp(now).title("Server Stoped")
                                     })
                                 })
                                 .await
@@ -149,7 +139,7 @@ fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     }
 
     m.content("").embed(|e| {
-        e.color(0x09BC8A)
+        e.color(colors::GREEEN)
             .timestamp(now)
             .title("Server Online")
             .field("Players", players, false)
@@ -171,8 +161,11 @@ async fn get_data_message(
         Some(i) => {
             data_channel
                 .edit_message(&ctx, i, |x| {
-                    x.content("")
-                        .add_embed(|e| e.color(0xFFF05A).timestamp(now).title("Server Starting..."))
+                    x.content("").add_embed(|e| {
+                        e.color(colors::YELLOW)
+                            .timestamp(now)
+                            .title("Server Starting...")
+                    })
                 })
                 .await
                 .unwrap();
@@ -181,8 +174,11 @@ async fn get_data_message(
         None => {
             let i = data_channel
                 .send_message(&ctx, |x| {
-                    x.content("")
-                        .add_embed(|e| e.color(0xFFF05A).timestamp(now).title("Server Starting..."))
+                    x.content("").add_embed(|e| {
+                        e.color(colors::YELLOW)
+                            .timestamp(now)
+                            .title("Server Starting...")
+                    })
                 })
                 .await
                 .unwrap()

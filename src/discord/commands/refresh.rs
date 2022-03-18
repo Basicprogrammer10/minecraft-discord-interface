@@ -23,7 +23,7 @@ impl Command for Refresh {
     }
 
     async fn execute(&self, _cfg: &Config, ctx: Context, msg: Message) -> Response {
-        msg.react(ctx, ReactionType::try_from(":white_check_mark:").unwrap())
+        msg.react(ctx, ReactionType::Unicode("✅".to_owned()))
             .await
             .unwrap();
 

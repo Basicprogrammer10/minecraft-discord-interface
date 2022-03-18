@@ -61,8 +61,8 @@ impl MinecraftConfig {
     pub fn new(cfg: &Cfg) -> Self {
         Self {
             dir: cfg_get!(cfg, "mc_dir"),
-            java_path: cfg_get!(cfg, "mc_start_cmd"),
-            start_cmd: cfg_get!(cfg, "mc_java_path"),
+            java_path: cfg_get!(cfg, "mc_java_path"),
+            start_cmd: cfg_get!(cfg, "mc_start_cmd"),
         }
     }
 }
