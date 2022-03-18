@@ -17,9 +17,11 @@ use simple_config_parser::Config;
 mod discord;
 mod events;
 mod types;
-use discord::DiscordEvent;
 use events::InternalEvent;
-use types::player::Player;
+use types::{
+    player::Player,
+    response::{DiscordEvents, Response},
+};
 
 lazy_static! {
     // Online Players
@@ -131,7 +133,7 @@ fn main() {
         events.iter().for_each(|e| {
             if let Some(j) = e.0.captures(&i) {
                 discord_tx
-                    .send(e.1.execute(&i, j))
+                    .send(e.1.execute(&i, j).discord)
                     .expect("Error sending event to discord thread");
             }
         })
@@ -140,10 +142,13 @@ fn main() {
     // Send server stop / crash event
     let status = server.wait().unwrap().code().unwrap();
     discord_tx
-        .send(match status {
-            0 => events::server_stop::ServerStop.execute(),
-            _ => events::server_crash::ServerCrash(status).execute(),
-        })
+        .send(
+            match status {
+                0 => events::server_stop::ServerStop.execute(),
+                _ => events::server_crash::ServerCrash(status).execute(),
+            }
+            .discord,
+        )
         .expect("Error sending event to discord thread");
 
     // Block thread untill final discord message sends

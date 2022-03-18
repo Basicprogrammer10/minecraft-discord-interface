@@ -1,6 +1,6 @@
 use regex::{Captures, Regex};
 
-use crate::DiscordEvent;
+use crate::Response;
 
 mod advancement;
 mod carpet;
@@ -15,11 +15,11 @@ type SafeEvent = Box<dyn Event + Send + Sync>;
 
 pub trait Event {
     fn regex(&self) -> &'static str;
-    fn execute(&self, line: &str, regex: Captures) -> DiscordEvent;
+    fn execute(&self, line: &str, regex: Captures) -> Response;
 }
 
 pub trait InternalEvent {
-    fn execute(&self) -> DiscordEvent;
+    fn execute(&self) -> Response;
 }
 
 pub fn mass_init_regex(events: Vec<SafeEvent>) -> Vec<(Regex, SafeEvent)> {

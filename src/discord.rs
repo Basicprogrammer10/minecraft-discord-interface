@@ -17,13 +17,13 @@ use serenity::{
     prelude::*,
 };
 
-use crate::PLAYERS;
+use crate::{DiscordEvents, PLAYERS};
 
 #[derive(Debug, Clone)]
 pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
 
-    pub rx: Receiver<DiscordEvent>,
+    pub rx: Receiver<Vec<DiscordEvents>>,
     pub tx: Sender<String>,
 
     pub msg_id_file: String,
@@ -59,7 +59,8 @@ impl EventHandler for Handler {
         tokio::spawn(async move {
             // Wait for incomming events
             for e in this.rx.iter() {
-                for f in e.events {
+                // For each event in the event array
+                for f in e {
                     match f {
                         DiscordEvents::TextEvent(i) => {
                             this.event_channel.say(&ctx, i).await.unwrap();
@@ -99,55 +100,6 @@ impl EventHandler for Handler {
             "[*] Bot `{}:{}` is ready!\n",
             ready.user.name, ready.user.discriminator
         );
-    }
-}
-
-pub enum DiscordEvents {
-    TextEvent(String),
-    RefreshData,
-    StopData,
-    Exit,
-}
-
-/// A series of events to execute in the discord runtime
-pub struct DiscordEvent {
-    pub events: Vec<DiscordEvents>,
-}
-
-impl DiscordEvent {
-    pub fn new() -> Self {
-        DiscordEvent { events: Vec::new() }
-    }
-
-    pub fn text<T>(self, text: T) -> Self
-    where
-        T: AsRef<str>,
-    {
-        let mut events = self.events;
-        events.push(DiscordEvents::TextEvent(text.as_ref().to_owned()));
-
-        DiscordEvent { events }
-    }
-
-    pub fn exit(self) -> Self {
-        let mut events = self.events;
-        events.push(DiscordEvents::Exit);
-
-        DiscordEvent { events }
-    }
-
-    pub fn refresh_data(self) -> Self {
-        let mut events = self.events;
-        events.push(DiscordEvents::RefreshData);
-
-        DiscordEvent { events }
-    }
-
-    pub fn stop_data(self) -> Self {
-        let mut events = self.events;
-        events.push(DiscordEvents::StopData);
-
-        DiscordEvent { events }
     }
 }
 

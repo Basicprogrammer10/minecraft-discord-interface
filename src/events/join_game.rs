@@ -1,5 +1,5 @@
 use super::Event;
-use crate::{DiscordEvent, Player, PLAYERS};
+use crate::{Player, Response, PLAYERS};
 use regex::Captures;
 
 pub struct JoinGame;
@@ -9,14 +9,14 @@ impl Event for JoinGame {
         r"\[.*\]: (.*) joined the game"
     }
 
-    fn execute(&self, _line: &str, regex: Captures) -> DiscordEvent {
+    fn execute(&self, _line: &str, regex: Captures) -> Response {
         let name = regex.get(1).unwrap().as_str();
 
         // Add player to global playerlist
         add_player(name.to_owned());
 
         println!("[🧑] `{}` joined the game", name);
-        DiscordEvent::new()
+        Response::new()
             .text(format!(":green_circle: **{}** joined the game", name))
             .refresh_data()
     }

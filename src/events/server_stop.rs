@@ -1,14 +1,11 @@
 use super::InternalEvent;
-use crate::DiscordEvent;
+use crate::Response;
 
 pub struct ServerStop;
 
 impl InternalEvent for ServerStop {
-    fn execute(&self) -> DiscordEvent {
+    fn execute(&self) -> Response {
         println!("[❌] Server Stoped");
-        DiscordEvent::new()
-            .text(":x: Server stoped")
-            .stop_data()
-            .exit()
+        Response::new().text(":x: Server stoped").stop_data().exit()
     }
 }
