@@ -12,7 +12,7 @@ use serenity::{
     model::id::{ChannelId, MessageId},
     prelude::*,
 };
-use simple_config_parser::Config;
+use simple_config_parser::Config as Cfg;
 
 mod discord;
 mod events;
@@ -20,6 +20,7 @@ mod types;
 use events::InternalEvent;
 use types::{
     command::Command,
+    config::Config,
     player::Player,
     response::{DiscordEvents, Response},
 };
@@ -29,37 +30,16 @@ lazy_static! {
     pub static ref PLAYERS: Mutex<Vec<Player>> = Mutex::new(Vec::new());
 }
 
-macro_rules! cfg_get {
-    ($cfg:expr, $name:expr) => {
-        $cfg.get_str($name)
-            .expect(concat!("Error getting `", $name, "` from Config"))
-    };
-
-    ($cfg:expr, $name:expr, $parse_type:ty) => {
-        $cfg.get::<$parse_type>($name)
-            .expect(concat!("Error getting `", $name, "` from Config"))
-    };
-}
-
 fn main() {
     // Load config values
-    let cfg = Config::new().file("config.cfg").unwrap();
-
-    let bot_token = cfg_get!(cfg, "bot_token");
-    let bot_data_channel = cfg_get!(cfg, "bot_data_channel", u64);
-    let bot_event_channel = cfg_get!(cfg, "bot_event_channel", u64);
-    let bot_command_prefix = cfg_get!(cfg, "bot_command_prefix");
-    let data_message_id_file = cfg_get!(cfg, "data_message_id_file");
-
-    let start_dir = cfg_get!(cfg, "mc_dir");
-    let mc_start_cmd = cfg_get!(cfg, "mc_start_cmd");
-    let mc_java_path = cfg_get!(cfg, "mc_java_path");
+    let cfg = Cfg::new().file("config.cfg").unwrap();
+    let config = Config::new(cfg);
 
     // Move into the server dir
-    env::set_current_dir(start_dir).expect("Error moving to dir");
+    env::set_current_dir(&config.minecraft.dir).expect("Error moving to dir");
 
     // Try to get the data message id
-    let data_message_id = fs::read_to_string(&data_message_id_file)
+    let data_message_id = fs::read_to_string(&config.bot.message_id_path)
         .ok()
         .map(|x| MessageId::from(x.parse::<u64>().unwrap()));
 
@@ -74,23 +54,23 @@ fn main() {
     // Start async runtime and discord bot in another thread
     let server_tx_1 = server_tx.clone();
     let discord_tx_1 = discord_tx.clone();
+    let config_1 = config.clone();
     thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap()
             .block_on(async {
-                let mut client = Client::builder(bot_token)
+                let mut client = Client::builder(config.bot.token)
                     .event_handler(discord::Handler {
                         loop_init: Arc::new(AtomicBool::new(false)),
-                        command_prefix: bot_command_prefix,
+                        config: config_1,
                         discord_rx,
                         discord_tx: discord_tx_1,
                         server_tx: server_tx_1,
-                        msg_id_file: data_message_id_file,
                         data_message: data_message_id,
-                        data_channel: ChannelId::from(bot_data_channel),
-                        event_channel: ChannelId::from(bot_event_channel),
+                        data_channel: ChannelId::from(config.bot.data_channel),
+                        event_channel: ChannelId::from(config.bot.event_channel),
                     })
                     .await
                     .expect("Error creating discord client");
@@ -102,8 +82,8 @@ fn main() {
     });
 
     // Start server
-    let mut server = process::Command::new(mc_java_path)
-        .args(mc_start_cmd.split(' ').collect::<Vec<&str>>())
+    let mut server = process::Command::new(config.minecraft.java_path)
+        .args(config.minecraft.start_cmd.split(' ').collect::<Vec<&str>>())
         .stdout(Stdio::piped())
         .stdin(Stdio::piped())
         .spawn()

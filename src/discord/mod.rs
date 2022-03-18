@@ -18,7 +18,7 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{Command, DiscordEvents, PLAYERS};
+use crate::{Command, Config, DiscordEvents, PLAYERS};
 
 mod about;
 mod help;
@@ -35,13 +35,12 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
-    pub command_prefix: String,
+    pub config: Config,
 
     pub discord_rx: Receiver<Vec<DiscordEvents>>,
     pub discord_tx: Sender<Vec<DiscordEvents>>,
     pub server_tx: Sender<Vec<String>>,
 
-    pub msg_id_file: String,
     pub data_message: Option<MessageId>,
     pub data_channel: ChannelId,
     pub event_channel: ChannelId,
@@ -51,19 +50,15 @@ pub struct Handler {
 impl EventHandler for Handler {
     // On User Send Message
     async fn message(&self, ctx: Context, msg: Message) {
-        if !msg.content.starts_with(&self.command_prefix) {
+        let prefix = &self.config.bot.command_prefix;
+        if !msg.content.starts_with(prefix) {
             return;
         }
 
-        let parts = msg
-            .content
-            .strip_prefix(&self.command_prefix)
-            .unwrap()
-            .split(' ')
-            .collect::<Vec<&str>>();
+        let parts = command_parts(&msg.content, prefix);
 
         if let Some(i) = COMMANDS.iter().find(|x| x.name() == parts[0]) {
-            let exe = i.execute(parts, ctx.clone(), msg.clone()).await;
+            let exe = i.execute(&self.config, ctx.clone(), msg.clone()).await;
 
             self.server_tx
                 .send(exe.server)
@@ -88,8 +83,13 @@ impl EventHandler for Handler {
         let this = self.clone();
 
         // Get / Create the message to modify
-        let data_message =
-            get_data_message(&ctx, this.msg_id_file, this.data_message, this.data_channel).await;
+        let data_message = get_data_message(
+            &ctx,
+            this.config.bot.message_id_path,
+            this.data_message,
+            this.data_channel,
+        )
+        .await;
 
         tokio::spawn(async move {
             // Wait for incomming events
@@ -191,4 +191,12 @@ async fn get_data_message(
             i
         }
     }
+}
+
+fn command_parts(cmd: &str, prefix: &str) -> Vec<String> {
+    cmd.strip_prefix(prefix)
+        .unwrap()
+        .split(' ')
+        .map(|x| x.to_owned())
+        .collect()
 }

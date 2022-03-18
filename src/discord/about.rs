@@ -1,6 +1,7 @@
-use crate::{Command, Response};
 use async_trait::async_trait;
 use serenity::{client::Context, model::channel::Message};
+
+use crate::{Command, Config, Response};
 
 pub struct About;
 
@@ -18,7 +19,7 @@ impl Command for About {
         "Gives infomation about this *amazing* bot"
     }
 
-    async fn execute(&self, _cmd: Vec<&str>, ctx: Context, msg: Message) -> Response {
+    async fn execute(&self, _cfg: &Config, ctx: Context, msg: Message) -> Response {
         msg.channel_id
             .send_message(ctx, |x| {
                 x.embed(|e| e.title("About").description("// TODO: Write About"))

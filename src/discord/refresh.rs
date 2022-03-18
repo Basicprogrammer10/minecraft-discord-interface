@@ -1,9 +1,10 @@
-use crate::{Command, Response};
 use async_trait::async_trait;
 use serenity::{
     client::Context,
     model::channel::{Message, ReactionType},
 };
+
+use crate::{Command, Config, Response};
 
 pub struct Refresh;
 
@@ -21,7 +22,7 @@ impl Command for Refresh {
         "Refreshes data embed"
     }
 
-    async fn execute(&self, _cmd: Vec<&str>, ctx: Context, msg: Message) -> Response {
+    async fn execute(&self, _cfg: &Config, ctx: Context, msg: Message) -> Response {
         msg.react(ctx, ReactionType::try_from(":white_check_mark:").unwrap())
             .await
             .unwrap();

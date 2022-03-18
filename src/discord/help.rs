@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use serenity::{client::Context, model::channel::Message};
 
-use super::COMMANDS;
-use crate::{Command, Response};
+use super::{command_parts, COMMANDS};
+use crate::{Command, Config, Response};
 
 pub struct Help;
 
@@ -20,7 +20,9 @@ impl Command for Help {
         "Get a list of ll commands or get specific deatils on one"
     }
 
-    async fn execute(&self, cmd: Vec<&str>, ctx: Context, msg: Message) -> Response {
+    async fn execute(&self, cfg: &Config, ctx: Context, msg: Message) -> Response {
+        let cmd = command_parts(&msg.content, &cfg.bot.command_prefix);
+
         if cmd.len() == 1 {
             let mut help = String::from("\u{200b}");
 
