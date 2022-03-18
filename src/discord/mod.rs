@@ -24,7 +24,7 @@ pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
 
     pub rx: Receiver<Vec<DiscordEvents>>,
-    pub tx: Sender<String>,
+    pub tx: Sender<Vec<String>>,
 
     pub msg_id_file: String,
     pub data_message: Option<MessageId>,
@@ -38,7 +38,7 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.content == "~test" {
             msg.reply(ctx, "Ok").await.unwrap();
-            self.tx.send("/stop\n".to_owned()).unwrap();
+            self.tx.send(vec!["/stop\n".to_owned()]).unwrap();
         }
     }
 

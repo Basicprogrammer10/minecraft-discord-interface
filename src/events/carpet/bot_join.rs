@@ -1,5 +1,5 @@
 use super::Event;
-use crate::{DiscordEvent, Player, PLAYERS};
+use crate::{Player, Response, PLAYERS};
 use regex::Captures;
 
 pub struct BotJoin;
@@ -9,7 +9,7 @@ impl Event for BotJoin {
         r"\[.*\]: (.*)\[local\] logged in"
     }
 
-    fn execute(&self, _line: &str, regex: Captures) -> DiscordEvent {
+    fn execute(&self, _line: &str, regex: Captures) -> Response {
         let name = regex.get(1).unwrap().as_str();
 
         // Add player as an offline bot
@@ -19,6 +19,6 @@ impl Event for BotJoin {
             bot: true,
         });
 
-        DiscordEvent::new()
+        Response::new()
     }
 }
