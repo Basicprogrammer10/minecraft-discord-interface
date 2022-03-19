@@ -38,17 +38,14 @@ impl Command for Player {
 
     async fn execute(&self, cfg: &Config, ctx: Context, msg: Message) -> Response {
         let cmd = misc::command_parts(&msg.content, &cfg.bot.command_prefix);
-        let mut cmd_str = cmd
+        let cmd_str = cmd
             .iter()
             .skip(1)
             .map(|x| x.to_owned())
             .collect::<Vec<String>>()
             .join(" ");
-
-        // Its jank but it works :/
-        while cmd_str.contains("  ") {
-            cmd_str = cmd_str.replace("  ", " ");
-        }
+        let mut cmd_str = rem_dub_space(cmd_str);
+        dbg!(&cmd_str);
 
         if let Some(reg) = PLAYER_REGEX.captures(&cmd_str) {
             let name = reg.get(1).unwrap().as_str();
@@ -59,43 +56,42 @@ impl Command for Player {
 
             let mut carpet_cmd = format!("/player {name} {command}");
 
-            if let Some(pos) = pos {
-                carpet_cmd.push_str(pos.as_str());
-            }
-
             if command == "spawn" {
+                carpet_cmd.push(' ');
+                if let Some(pos) = pos {
+                    carpet_cmd.push_str(pos.as_str());
+                } else {
+                    carpet_cmd.push_str("at ~ ~ ~");
+                }
+
+                carpet_cmd.push(' ');
                 if let Some(fas) = fas {
-                    let fas = fas.as_str();
-
-                    if !(fas.starts_with(' ') || carpet_cmd.ends_with(' ')) {
-                        carpet_cmd.push(' ');
-                    }
-
-                    carpet_cmd.push_str(fas);
+                    carpet_cmd.push_str(fas.as_str());
                 } else {
                     carpet_cmd.push_str("facing 0 0");
                 }
 
+                carpet_cmd.push(' ');
                 if let Some(dim) = dim {
-                    let dim = dim.as_str();
-
-                    if !(dim.starts_with(' ') || carpet_cmd.ends_with(' ')) {
-                        carpet_cmd.push(' ');
-                    }
-
-                    carpet_cmd.push_str(dim);
+                    carpet_cmd.push_str(dim.as_str());
                 } else {
                     carpet_cmd.push_str("in minecraft:overworld");
                 }
             }
 
+            // Its jank but it works :/
+            while cmd_str.contains("  ") {
+                cmd_str = cmd_str.replace("  ", " ");
+            }
+
             carpet_cmd.push('\n');
+            dbg!(&cmd_str);
 
             msg.react(ctx, ReactionType::Unicode("✅".to_owned()))
                 .await
                 .unwrap();
 
-            return Response::new().server_command(carpet_cmd);
+            return Response::new().server_command(rem_dub_space(carpet_cmd));
         }
 
         misc::error(
@@ -111,4 +107,14 @@ impl Command for Player {
 
         Response::new()
     }
+}
+
+fn rem_dub_space(inp: String) -> String {
+    let inp = inp.chars().collect::<Vec<char>>();
+
+    inp.iter()
+        .enumerate()
+        .filter(|(i, x)| !(**x == ' ' && inp[i.saturating_sub(1)] == ' '))
+        .map(|x| x.1)
+        .collect::<String>()
 }
