@@ -111,7 +111,6 @@ fn main() {
         for i in server_rx.iter() {
             // Execute commands in the event
             for j in i {
-                println!("!DBG! Got server message: `{}`", j);
                 stdin
                     .write_all(j.as_bytes())
                     .expect("Error writing to stdout");

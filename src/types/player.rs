@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Player {
     pub name: String,
     pub online: bool,
@@ -18,6 +19,6 @@ impl Player {
 
 impl fmt::Display for Player {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}", if self.bot { ":robot: " } else { "" }, self.name)
+        write!(f, "{}{}", if self.bot { "🤖 " } else { "" }, self.name)
     }
 }

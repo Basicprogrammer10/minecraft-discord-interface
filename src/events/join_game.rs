@@ -43,5 +43,6 @@ fn add_player(name: String) -> bool {
 
     // Add player normally
     players.push(Player::new(name));
-    return false;
+    
+    false
 }

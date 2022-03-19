@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fs;
 
 use serenity::{
@@ -7,17 +8,40 @@ use serenity::{
 };
 
 use super::{colors, commands};
-use crate::{common, PLAYERS};
+use crate::{common, Player, PLAYERS};
 
 /// Refresh data message
 pub fn data_refresh(m: &mut EditMessage) -> &mut EditMessage {
     let now = chrono::Utc::now();
-    let mut players = String::from("\u{200b}");
 
-    for i in PLAYERS.lock().iter().filter(|x| x.online) {
+    // Get all online players as a vector
+    let online_players = PLAYERS.lock();
+    let mut online_players = online_players
+        .iter()
+        .filter(|x| x.online)
+        .collect::<Vec<&Player>>();
+
+    // Sort the players to we have real players before bots
+    // Then sort alphabetacly within players and bots
+    online_players.sort_by(|x, y| {
+        if x.bot && !y.bot {
+            return Ordering::Greater;
+        }
+
+        if !x.bot && y.bot {
+            return Ordering::Less;
+        }
+
+        x.name.to_lowercase().cmp(&y.name.to_lowercase())
+    });
+
+    // Start the players string builder
+    let mut players = String::from("```\u{200b}");
+    for i in online_players {
         players.push_str(i.to_string().as_str());
         players.push('\n');
     }
+    players.push_str("```");
 
     m.content("").embed(|e| {
         e.color(colors::GREEN)
