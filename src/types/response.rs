@@ -49,9 +49,12 @@ impl Response {
         Self { discord, ..self }
     }
 
-    pub fn server_command(self, command: String) -> Self {
+    pub fn server_command<T>(self, command: T) -> Self
+    where
+        T: AsRef<str>,
+    {
         let mut server = self.server;
-        server.push(command);
+        server.push(command.as_ref().to_owned());
 
         Self { server, ..self }
     }
