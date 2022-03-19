@@ -91,3 +91,20 @@ pub fn best_command(command: &str) -> (usize, f64) {
 
     best
 }
+
+pub async fn error<T, M>(channel: ChannelId, ctx: Context, title: T, des: M)
+where
+    T: AsRef<str>,
+    M: AsRef<str>,
+{
+    channel
+        .send_message(ctx, |x| {
+            x.embed(|e| {
+                e.title(format!("Error: {}", title.as_ref()))
+                    .description(des.as_ref())
+                    .color(colors::RED)
+            })
+        })
+        .await
+        .unwrap();
+}

@@ -3,13 +3,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serenity::{
     client::Context,
-    model::{
-        channel::{Message, ReactionType},
-        id::ChannelId,
-    },
+    model::channel::{Message, ReactionType},
 };
 
-use super::super::{colors, misc::command_parts};
+use super::super::misc;
 use crate::{Command, Config, Response};
 
 lazy_static! {
@@ -35,8 +32,12 @@ impl Command for Player {
         "Runs carpet player actions on the server"
     }
 
+    fn needs_server(&self) -> bool {
+        true
+    }
+
     async fn execute(&self, cfg: &Config, ctx: Context, msg: Message) -> Response {
-        let cmd = command_parts(&msg.content, &cfg.bot.command_prefix);
+        let cmd = misc::command_parts(&msg.content, &cfg.bot.command_prefix);
         let mut cmd_str = cmd
             .iter()
             .skip(1)
@@ -97,7 +98,7 @@ impl Command for Player {
             return Response::new().server_command(carpet_cmd);
         }
 
-        error(
+        misc::error(
             msg.channel_id,
             ctx,
             "Invalid command",
@@ -110,17 +111,4 @@ impl Command for Player {
 
         Response::new()
     }
-}
-
-async fn error(channel: ChannelId, ctx: Context, title: &str, des: String) {
-    channel
-        .send_message(ctx, |x| {
-            x.embed(|e| {
-                e.title(format!("Error: {}", title))
-                    .description(des)
-                    .color(colors::RED)
-            })
-        })
-        .await
-        .unwrap();
 }

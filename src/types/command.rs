@@ -9,5 +9,8 @@ pub trait Command {
     fn name(&self) -> &'static str;
     fn help(&self) -> &'static str;
     fn description(&self) -> &'static str;
+    fn needs_server(&self) -> bool {
+        false
+    }
     async fn execute(&self, cfg: &Config, ctx: Context, msg: Message) -> Response;
 }

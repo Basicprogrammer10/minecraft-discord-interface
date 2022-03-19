@@ -15,7 +15,7 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{Config, DiscordEvents};
+use crate::{Config, DiscordEvents, SERVER_ON};
 
 mod colors;
 mod commands;
@@ -49,6 +49,17 @@ impl EventHandler for Handler {
 
         // If command is installed and emabled, run it
         if let Some(i) = commands::COMMANDS.iter().find(|x| x.name() == parts[0]) {
+            if i.needs_server() && !*SERVER_ON.read() {
+                misc::error(
+                    msg.channel_id,
+                    ctx,
+                    "Server not ready",
+                    "Please wait for the server to start before using this command",
+                )
+                .await;
+                return;
+            }
+
             let exe = i.execute(&self.config, ctx.clone(), msg.clone()).await;
 
             self.server_tx

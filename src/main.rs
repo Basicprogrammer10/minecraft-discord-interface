@@ -7,7 +7,7 @@ use std::thread;
 
 use crossbeam_channel::{unbounded, Receiver};
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serenity::{
     model::id::{ChannelId, MessageId},
     prelude::*,
@@ -31,6 +31,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 lazy_static! {
     // Online Players
     pub static ref PLAYERS: Mutex<Vec<Player>> = Mutex::new(Vec::new());
+
+    // If mc server is on
+    pub static ref SERVER_ON: RwLock<bool> = RwLock::new(false);
 }
 
 fn main() {

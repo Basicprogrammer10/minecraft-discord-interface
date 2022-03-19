@@ -1,6 +1,7 @@
 use super::Event;
-use crate::Response;
 use regex::Captures;
+
+use crate::{Response, SERVER_ON};
 
 pub struct ServerStart;
 
@@ -11,6 +12,9 @@ impl Event for ServerStart {
 
     fn execute(&self, _line: &str, regex: Captures) -> Response {
         let time = regex.get(1).unwrap().as_str();
+
+        // Tell the rest of the system that the server is running
+        *SERVER_ON.write() = true;
 
         println!("[🌠] Server Started ({})", time);
         Response::new()
