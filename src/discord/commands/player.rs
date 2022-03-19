@@ -44,8 +44,7 @@ impl Command for Player {
             .map(|x| x.to_owned())
             .collect::<Vec<String>>()
             .join(" ");
-        let mut cmd_str = rem_dub_space(cmd_str);
-        dbg!(&cmd_str);
+        let cmd_str = rem_dub_space(cmd_str);
 
         if let Some(reg) = PLAYER_REGEX.captures(&cmd_str) {
             let name = reg.get(1).unwrap().as_str();
@@ -79,13 +78,7 @@ impl Command for Player {
                 }
             }
 
-            // Its jank but it works :/
-            while cmd_str.contains("  ") {
-                cmd_str = cmd_str.replace("  ", " ");
-            }
-
             carpet_cmd.push('\n');
-            dbg!(&cmd_str);
 
             msg.react(ctx, ReactionType::Unicode("✅".to_owned()))
                 .await
