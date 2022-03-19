@@ -13,16 +13,21 @@ impl Event for JoinGame {
         let name = regex.get(1).unwrap().as_str();
 
         // Add player to global playerlist
-        add_player(name.to_owned());
+        let bot = add_player(name.to_owned());
 
         println!("[🧑] `{}` joined the game", name);
         Response::new()
-            .discord_text(format!(":green_circle: **{}** joined the game", name))
+            .discord_text(format!(
+                ":green_circle: {}**{}** joined the game",
+                if bot { ":robot: " } else { "" },
+                name
+            ))
             .discord_refresh_data()
     }
 }
 
-fn add_player(name: String) {
+// Returns if player is a bot
+fn add_player(name: String) -> bool {
     let mut players = PLAYERS.lock();
 
     // Check if player is in playerlist already
@@ -32,9 +37,11 @@ fn add_player(name: String) {
         if !i.online && i.bot {
             i.online = true;
         }
-        return;
+
+        return i.bot;
     }
 
     // Add player normally
     players.push(Player::new(name));
+    return false;
 }
