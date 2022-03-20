@@ -7,7 +7,7 @@ use serenity::{
     prelude::*,
 };
 
-use super::{colors, commands};
+use super::{colors, Command};
 use crate::{common, Player, PLAYERS};
 
 /// Refresh data message
@@ -102,9 +102,9 @@ pub fn command_parts(cmd: &str, prefix: &str) -> Vec<String> {
         .collect()
 }
 
-pub fn best_command(command: &str) -> (usize, f64) {
+pub fn best_command(commands: &[Box<dyn Command + Sync + Send>], command: &str) -> (usize, f64) {
     let mut best = (0usize, 0f64);
-    for (i, e) in commands::COMMANDS.iter().enumerate() {
+    for (i, e) in commands.iter().enumerate() {
         let sim = common::similarity(command, e.name());
 
         if sim > best.1 {

@@ -76,7 +76,7 @@ impl Command for Help {
         }
 
         // If specific command not found sugust a simaler named
-        let best = best_command(cmd);
+        let best = best_command(&*COMMANDS, cmd);
         let disc = if best.1 > 0.0 {
             format!(
                 "\nDid you mean `{}{}`? ({}%)",

@@ -5,6 +5,10 @@ use crate::{Response, SERVER_ON};
 pub struct ServerStop;
 
 impl InternalEvent for ServerStop {
+    fn name(&self) -> &'static str {
+        "server_stop"
+    }
+
     fn execute(&self) -> Response {
         println!("[❌] Server Stoped");
 

@@ -1,10 +1,17 @@
+use async_trait::async_trait;
+use regex::Captures;
+
 use super::Event;
 use crate::{Player, Response, PLAYERS};
-use regex::Captures;
 
 pub struct BotJoin;
 
+#[async_trait]
 impl Event for BotJoin {
+    fn name(&self) -> &'static str {
+        "bot_join"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: (.*)\[local\] logged in"
     }

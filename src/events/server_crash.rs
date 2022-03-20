@@ -5,6 +5,10 @@ use crate::{Response, SERVER_ON};
 pub struct ServerCrash(pub i32);
 
 impl InternalEvent for ServerCrash {
+    fn name(&self) -> &'static str {
+        "server_crash"
+    }
+
     fn execute(&self) -> Response {
         println!("[🔥] Server Crashed ({})", self.0);
 

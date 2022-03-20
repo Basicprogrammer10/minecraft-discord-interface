@@ -5,6 +5,10 @@ use regex::Captures;
 pub struct ChatMessage;
 
 impl Event for ChatMessage {
+    fn name(&self) -> &'static str {
+        "chat_message"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: <(.*)> (.*)"
     }

@@ -26,6 +26,7 @@ pub struct BotConfig {
     pub event_channel: u64,
     pub command_prefix: String,
     pub message_id_path: String,
+    pub disabled_commands: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,7 @@ pub struct MinecraftConfig {
     pub dir: String,
     pub java_path: String,
     pub start_cmd: String,
+    pub disabled_events: Vec<String>,
 }
 
 impl Config {
@@ -53,6 +55,7 @@ impl BotConfig {
             event_channel: cfg_get!(cfg, "bot_event_channel", u64),
             command_prefix: cfg_get!(cfg, "bot_command_prefix"),
             message_id_path: cfg_get!(cfg, "data_message_id_file"),
+            disabled_commands: parse_string_arr(cfg_get!(cfg, "bot_disabled_commands")),
         }
     }
 }
@@ -63,6 +66,12 @@ impl MinecraftConfig {
             dir: cfg_get!(cfg, "mc_dir"),
             java_path: cfg_get!(cfg, "mc_java_path"),
             start_cmd: cfg_get!(cfg, "mc_start_cmd"),
+            disabled_events: parse_string_arr(cfg_get!(cfg, "mc_disabled_events")),
         }
     }
+}
+
+#[inline]
+fn parse_string_arr(str: String) -> Vec<String> {
+    str.split(',').map(|x| x.trim().to_owned()).collect()
 }

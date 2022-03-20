@@ -14,11 +14,13 @@ pub mod server_stop;
 type SafeEvent = Box<dyn Event + Send + Sync>;
 
 pub trait Event {
+    fn name(&self) -> &'static str;
     fn regex(&self) -> &'static str;
     fn execute(&self, line: &str, regex: Captures) -> Response;
 }
 
 pub trait InternalEvent {
+    fn name(&self) -> &'static str;
     fn execute(&self) -> Response;
 }
 

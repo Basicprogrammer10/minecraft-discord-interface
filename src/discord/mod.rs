@@ -15,16 +15,17 @@ use serenity::{
     prelude::*,
 };
 
-use crate::{Config, DiscordEvents, SERVER_ON};
+use crate::{Command, Config, DiscordEvents, SERVER_ON};
 
 mod colors;
-mod commands;
+pub mod commands;
 mod misc;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Handler {
     pub loop_init: Arc<AtomicBool>,
     pub config: Config,
+    pub commands: Arc<Vec<Box<dyn Command + Send + Sync>>>,
 
     pub discord_rx: Receiver<Vec<DiscordEvents>>,
     pub discord_tx: Sender<Vec<DiscordEvents>>,
@@ -48,7 +49,7 @@ impl EventHandler for Handler {
         let parts = misc::command_parts(&msg.content, prefix);
 
         // If command is installed and emabled, run it
-        if let Some(i) = commands::COMMANDS.iter().find(|x| x.name() == parts[0]) {
+        if let Some(i) = self.commands.iter().find(|x| x.name() == parts[0]) {
             if i.needs_server() && !*SERVER_ON.read() {
                 misc::error(
                     msg.channel_id,
@@ -73,18 +74,18 @@ impl EventHandler for Handler {
 
         // If command is not found
         // Try to find one by a simaler name
-        let best = misc::best_command(&parts[0]);
+        let best = misc::best_command(&*self.commands, &parts[0]);
 
         // Create a discription depending on the max similarity
         let disc = if best.1 > 0.0 {
             format!(
-                "Did you mean `{pre}{}`? ({}%)",
-                commands::COMMANDS[best.0].name(),
+                "Did you mean `{pre}{}`? ({}%)\n",
+                self.commands[best.0].name(),
                 (best.1 * 100.0).round(),
                 pre = prefix
             )
         } else {
-            format!("Use `{}help` to see all commands", prefix)
+            "".to_owned()
         };
 
         // Send message
@@ -92,7 +93,7 @@ impl EventHandler for Handler {
             .send_message(ctx, |x| {
                 x.embed(|e| {
                     e.title("Error: Unknown Command")
-                        .description(format!("{}\nUse `{}help` for all commands.", disc, prefix,))
+                        .description(format!("{}Use `{}help` for all commands.", disc, prefix,))
                         .color(colors::RED)
                 })
             })

@@ -5,7 +5,7 @@ use std::process::{self, Stdio};
 use std::sync::{atomic::AtomicBool, Arc};
 use std::thread;
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::unbounded;
 use lazy_static::lazy_static;
 use parking_lot::{Mutex, RwLock};
 use serenity::{
@@ -52,10 +52,49 @@ fn main() {
     // Load internal events
     let events = events::base_events();
     let events = events::mass_init_regex(events);
+    let events = events
+        .into_iter()
+        .filter(|x| {
+            !config
+                .minecraft
+                .disabled_events
+                .contains(&(*x.1.name()).to_owned())
+        })
+        .collect::<Vec<_>>();
+
+    // Load discord commands
+    let discord_commands = discord::commands::base_commands();
+    let discord_commands = discord_commands
+        .into_iter()
+        .filter(|x| {
+            !config
+                .bot
+                .disabled_commands
+                .contains(&(*x.name()).to_owned())
+        })
+        .collect::<Vec<_>>();
+
+    println!(
+        "Minecraft Events: {}",
+        events
+            .iter()
+            .map(|x| x.1.name())
+            .collect::<Vec<&str>>()
+            .join(", ")
+    );
+
+    println!(
+        "Discord Commands: {}",
+        discord_commands
+            .iter()
+            .map(|x| x.name())
+            .collect::<Vec<&str>>()
+            .join(", ")
+    );
 
     // Create mpsc channels
     let (discord_tx, discord_rx) = unbounded();
-    let (server_tx, server_rx): (_, Receiver<Vec<String>>) = unbounded();
+    let (server_tx, server_rx) = unbounded();
 
     // Start async runtime and discord bot in another thread
     let server_tx_1 = server_tx.clone();
@@ -71,6 +110,7 @@ fn main() {
                     .event_handler(discord::Handler {
                         loop_init: Arc::new(AtomicBool::new(false)),
                         config: config_1,
+                        commands: Arc::new(discord_commands),
                         discord_rx,
                         discord_tx: discord_tx_1,
                         server_tx: server_tx_1,

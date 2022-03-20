@@ -5,6 +5,10 @@ use regex::Captures;
 pub struct Advancement;
 
 impl Event for Advancement {
+    fn name(&self) -> &'static str {
+        "advancement"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: (.*) has (made|completed) the (advancement|challenge) \[(.*)\]"
     }

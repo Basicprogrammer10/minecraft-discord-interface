@@ -5,6 +5,10 @@ use regex::Captures;
 pub struct JoinGame;
 
 impl Event for JoinGame {
+    fn name(&self) -> &'static str {
+        "join_game"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: (.*) joined the game"
     }
@@ -43,6 +47,6 @@ fn add_player(name: String) -> bool {
 
     // Add player normally
     players.push(Player::new(name));
-    
+
     false
 }

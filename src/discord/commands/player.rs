@@ -10,6 +10,7 @@ use super::super::misc;
 use crate::{Command, Config, Response};
 
 lazy_static! {
+    // if only i was good a regex then i would be a regexpert lol
     static ref PLAYER_REGEX: Regex = Regex::new(
         r"(.*) (spawn|kill)( at [-\.\d ]+)?( ?facing ([-\.\d ]+))?( ?in minecraft:(overworld|the_end|the_nether))?"
     )

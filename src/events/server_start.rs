@@ -6,6 +6,10 @@ use crate::{Response, SERVER_ON};
 pub struct ServerStart;
 
 impl Event for ServerStart {
+    fn name(&self) -> &'static str {
+        "server_start"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: Done \((.*)\)!"
     }

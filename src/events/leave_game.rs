@@ -5,6 +5,10 @@ use regex::Captures;
 pub struct LeaveGame;
 
 impl Event for LeaveGame {
+    fn name(&self) -> &'static str {
+        "leave_game"
+    }
+
     fn regex(&self) -> &'static str {
         r"\[.*\]: (.*) left the game"
     }
